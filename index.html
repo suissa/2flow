@@ -1,0 +1,1454 @@
+<!-- File: web/dashboard.html -->
+<!DOCTYPE html>
+<html lang="pt-PT" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AGENTD // Enterprise Agent Framework & Distributed Engine</title>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS via CDN com configuração customizada -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              400: '#4ade80',
+              500: '#22c55e',
+              600: '#16a34a',
+              900: '#14532d',
+            },
+            cyber: {
+              cyan: '#38bdf8',
+              purple: '#c084fc',
+              amber: '#fbbf24',
+              rose: '#f43f5e',
+              dark: '#020617',
+              panel: '#0f172a',
+              card: '#1e293b',
+              border: '#334155',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Animate.css via CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+  <!-- FontAwesome 6 via CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Glow Effects */
+    .glow-cyan {
+      box-shadow: 0 0 20px -5px rgba(56, 189, 248, 0.25);
+    }
+    .glow-emerald {
+      box-shadow: 0 0 20px -5px rgba(34, 197, 94, 0.25);
+    }
+    .glow-purple {
+      box-shadow: 0 0 20px -5px rgba(192, 132, 252, 0.25);
+    }
+    .glow-rose {
+      box-shadow: 0 0 20px -5px rgba(244, 63, 94, 0.25);
+    }
+
+    /* Glassmorphism */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+<body class="bg-cyber-dark text-slate-100 font-sans antialiased min-h-screen flex flex-col overflow-x-hidden selection:bg-brand-500 selection:text-black">
+
+  <!-- ====================================================================== -->
+  <!-- 1. BARRA DE TOPO (HEADER & CLUSTER TELEMETRY BAR)                      -->
+  <!-- ====================================================================== -->
+  <header class="sticky top-0 z-50 glass-panel border-b border-cyber-border px-4 lg:px-6 py-3 transition-all">
+    <div class="flex items-center justify-between gap-4">
+      
+      <!-- Brand & Engine Badge -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 to-cyber-cyan flex items-center justify-center text-black font-black text-xl shadow-lg shadow-brand-500/20">
+          <i class="fa-solid fa-bolt"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold text-lg tracking-wider text-white">AGENTD</span>
+            <span class="text-xs font-mono font-bold bg-brand-900/60 text-brand-400 border border-brand-500/30 px-2 py-0.5 rounded-full">v0.13.0-enterprise</span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">Zig High-Performance Distributed Autonomous Engine</p>
+        </div>
+      </div>
+
+      <!-- Quick Cluster Status Telemetry -->
+      <div class="hidden md:flex items-center gap-6 font-mono text-xs">
+        <div class="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800">
+          <span class="relative flex h-2.5 w-2.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-500"></span>
+          </span>
+          <span class="text-slate-400">Raft Quórum:</span>
+          <span class="text-brand-400 font-bold" id="header-raft-quorum">3/3 Nós Saudáveis</span>
+        </div>
+
+        <div class="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800">
+          <i class="fa-solid fa-gauge-high text-cyber-cyan"></i>
+          <span class="text-slate-400">LMAX Vazão:</span>
+          <span class="text-cyber-cyan font-bold" id="header-throughput">18.45 M ops/s</span>
+        </div>
+
+        <div class="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800">
+          <i class="fa-solid fa-coins text-cyber-amber"></i>
+          <span class="text-slate-400">Orçamento IA:</span>
+          <span class="text-cyber-amber font-bold" id="header-ai-budget">$4.21 / $25.00</span>
+        </div>
+      </div>
+
+      <!-- Live Clock & Action Tools -->
+      <div class="flex items-center gap-3">
+        <button onclick="triggerNotification('Sincronização de nós concluída via QUIC Datagrams', 'info')" class="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition relative">
+          <i class="fa-regular fa-bell"></i>
+          <span class="absolute top-1 right-1 w-2 h-2 bg-brand-500 rounded-full"></span>
+        </button>
+
+        <button onclick="switchTab('api-playground')" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyber-cyan/10 hover:bg-cyber-cyan/20 text-cyber-cyan border border-cyber-cyan/30 text-xs font-mono font-semibold transition">
+          <i class="fa-solid fa-terminal"></i>
+          <span class="hidden sm:inline">REST API</span>
+        </button>
+
+        <div class="hidden xl:flex flex-col text-right font-mono text-[11px] text-slate-400">
+          <span id="live-clock" class="font-bold text-slate-200">00:00:00 UTC</span>
+          <span class="text-[10px] text-slate-500">cluster-lisboa-01</span>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ====================================================================== -->
+  <!-- 2. LAYOUT PRINCIPAL (SIDEBAR + CONTEÚDO PRINCIPAL)                    -->
+  <!-- ====================================================================== -->
+  <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+
+    <!-- SIDEBAR DE NAVEGAÇÃO -->
+    <aside class="w-full md:w-64 bg-slate-950/90 border-r border-cyber-border p-4 flex flex-col gap-1 shrink-0">
+      <div class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold px-3 py-2">Módulos do Sistema</div>
+
+      <button onclick="switchTab('overview')" id="btn-tab-overview" class="nav-btn flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition bg-brand-500/10 text-brand-400 border border-brand-500/20">
+        <i class="fa-solid fa-chart-pie w-5 text-center"></i>
+        <span>Visão Geral do Cluster</span>
+      </button>
+
+      <button onclick="switchTab('nats-outbox')" id="btn-tab-nats-outbox" class="nav-btn flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:bg-slate-900 hover:text-white">
+        <i class="fa-solid fa-network-wired w-5 text-center text-cyber-cyan"></i>
+        <span>NATS+QUIC & Outbox</span>
+        <span class="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">DLQ</span>
+      </button>
+
+      <button onclick="switchTab('raft-sagas')" id="btn-tab-raft-sagas" class="nav-btn flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:bg-slate-900 hover:text-white">
+        <i class="fa-solid fa-arrows-split-up-and-left w-5 text-center text-cyber-amber"></i>
+        <span>Raft & Sagas Rollback</span>
+      </button>
+
+      <button onclick="switchTab('ai-gateway')" id="btn-tab-ai-gateway" class="nav-btn flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:bg-slate-900 hover:text-white">
+        <i class="fa-solid fa-brain w-5 text-center text-cyber-purple"></i>
+        <span>Multi-Provider LLM</span>
+        <span class="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">Custo</span>
+      </button>
+
+      <button onclick="switchTab('swarm-mesh')" id="btn-tab-swarm-mesh" class="nav-btn flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:bg-slate-900 hover:text-white">
+        <i class="fa-solid fa-hive w-5 text-center text-amber-400"></i>
+        <span>Enxame de Agentes (Swarm)</span>
+      </button>
+
+      <button onclick="switchTab('data-mesh')" id="btn-tab-data-mesh" class="nav-btn flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:bg-slate-900 hover:text-white">
+        <i class="fa-solid fa-cubes-stacked w-5 text-center text-cyan-400"></i>
+        <span>Data Mesh & PII Guard</span>
+      </button>
+
+      <button onclick="switchTab('wasi-iac')" id="btn-tab-wasi-iac" class="nav-btn flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:bg-slate-900 hover:text-white">
+        <i class="fa-solid fa-shield-halved w-5 text-center text-brand-400"></i>
+        <span>WASI Sandbox & IaC/PaC</span>
+      </button>
+
+      <button onclick="switchTab('api-playground')" id="btn-tab-api-playground" class="nav-btn flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:bg-slate-900 hover:text-white">
+        <i class="fa-solid fa-code w-5 text-center text-blue-400"></i>
+        <span>API Client & OTLP Trace</span>
+      </button>
+
+      <!-- Bottom System Info Card -->
+      <div class="mt-auto pt-4 border-t border-slate-900 hidden md:block">
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 font-mono text-[11px] space-y-1.5">
+          <div class="flex justify-between text-slate-400">
+            <span>Zig Target:</span>
+            <span class="text-slate-200">x86_64-linux</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Opt Mode:</span>
+            <span class="text-brand-400 font-bold">ReleaseFast</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Memória Heap:</span>
+            <span class="text-cyber-cyan">0 bytes (Zero-Copy)</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ÁREA DE CONTEÚDO PRINCIPAL (DYNAMIC TABS) -->
+    <main class="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6">
+
+      <!-- ================================================================ -->
+      <!-- TAB 1: VISÃO GERAL DO CLUSTER (OVERVIEW)                         -->
+      <!-- ================================================================ -->
+      <div id="tab-overview" class="tab-content space-y-6 animate__animated animate__fadeIn">
+        
+        <!-- Key Metrics Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 hover:border-brand-500/40 transition glow-emerald">
+            <div class="flex justify-between items-start">
+              <span class="text-xs font-mono font-medium text-slate-400 uppercase tracking-wider">Débito LMAX Ring</span>
+              <span class="p-2 rounded-lg bg-brand-500/10 text-brand-400 text-sm"><i class="fa-solid fa-gauge-high"></i></span>
+            </div>
+            <div class="mt-3 flex items-baseline gap-2">
+              <span class="text-2xl lg:text-3xl font-extrabold text-white font-mono" id="stat-lmax">18.45</span>
+              <span class="text-xs text-brand-400 font-semibold font-mono">M msgs/s</span>
+            </div>
+            <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+              <i class="fa-solid fa-arrow-trend-up text-brand-400"></i>
+              <span class="text-slate-300 font-medium">+12.4%</span> vs última hora (Zero-Lock)
+            </div>
+          </div>
+
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 hover:border-cyber-cyan/40 transition glow-cyan">
+            <div class="flex justify-between items-start">
+              <span class="text-xs font-mono font-medium text-slate-400 uppercase tracking-wider">Termo Raft / Líder</span>
+              <span class="p-2 rounded-lg bg-cyber-cyan/10 text-cyber-cyan text-sm"><i class="fa-solid fa-crown"></i></span>
+            </div>
+            <div class="mt-3 flex items-baseline gap-2">
+              <span class="text-2xl lg:text-3xl font-extrabold text-white font-mono" id="stat-raft-term">Termo 42</span>
+              <span class="text-xs text-cyber-cyan font-semibold font-mono">Nó #1</span>
+            </div>
+            <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+              <i class="fa-solid fa-circle-check text-brand-400"></i>
+              Linearizabilidade estrita ativa
+            </div>
+          </div>
+
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 hover:border-cyber-purple/40 transition glow-purple">
+            <div class="flex justify-between items-start">
+              <span class="text-xs font-mono font-medium text-slate-400 uppercase tracking-wider">Agentes no Swarm</span>
+              <span class="p-2 rounded-lg bg-cyber-purple/10 text-cyber-purple text-sm"><i class="fa-solid fa-hive"></i></span>
+            </div>
+            <div class="mt-3 flex items-baseline gap-2">
+              <span class="text-2xl lg:text-3xl font-extrabold text-white font-mono" id="stat-active-agents">14</span>
+              <span class="text-xs text-cyber-purple font-semibold font-mono">Especialistas</span>
+            </div>
+            <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+              <i class="fa-solid fa-bolt text-cyber-cyan"></i>
+              Leilões CNP com latência média de 1.2ms
+            </div>
+          </div>
+
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 hover:border-cyber-rose/40 transition glow-rose">
+            <div class="flex justify-between items-start">
+              <span class="text-xs font-mono font-medium text-slate-400 uppercase tracking-wider">Dead Letter Queue</span>
+              <span class="p-2 rounded-lg bg-cyber-rose/10 text-cyber-rose text-sm"><i class="fa-solid fa-skull-crossbones"></i></span>
+            </div>
+            <div class="mt-3 flex items-baseline gap-2">
+              <span class="text-2xl lg:text-3xl font-extrabold text-white font-mono" id="stat-dlq-count">1</span>
+              <span class="text-xs text-cyber-rose font-semibold font-mono">Poison Pill</span>
+            </div>
+            <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+              <span class="text-rose-400 font-bold">100% isolada</span> sem contaminação
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Real-Time Metrics Chart & Node Topology Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Real-Time Chart -->
+          <div class="lg:col-span-2 bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+              <div>
+                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                  <i class="fa-solid fa-chart-line text-brand-400"></i>
+                  Telemetria em Tempo Real: Vazão & Latência p95
+                </h3>
+                <p class="text-xs text-slate-400">Medição contínua via OTLP Metrics Collector a cada 1000ms</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-full text-xs font-mono bg-slate-800 text-brand-400 border border-brand-500/20">
+                <i class="fa-solid fa-satellite-dish animate-pulse"></i> LIVE SSE
+              </span>
+            </div>
+            <div class="flex-1 min-h-[260px] relative">
+              <canvas id="liveMetricsChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Raft Cluster Topology & Status -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col">
+            <h3 class="font-bold text-base text-white mb-4 flex items-center gap-2">
+              <i class="fa-solid fa-server text-cyber-cyan"></i>
+              Topologia do Cluster Raft (3 Nós)
+            </h3>
+            
+            <div class="space-y-3 flex-1 flex flex-col justify-between" id="nodes-container">
+              <!-- Node 1 -->
+              <div class="p-3.5 rounded-xl bg-slate-950 border border-brand-500/30 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold font-mono text-xs">
+                    N1
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-xs text-white">node-lisboa-01</span>
+                      <span class="text-[10px] font-mono font-bold bg-brand-900/80 text-brand-300 px-1.5 py-0.2 rounded">LÍDER 👑</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 font-mono">10.0.1.10:9000</span>
+                  </div>
+                </div>
+                <div class="text-right font-mono text-xs">
+                  <span class="text-brand-400 font-bold">100% OK</span>
+                  <div class="text-[10px] text-slate-500">Commit: #1042</div>
+                </div>
+              </div>
+
+              <!-- Node 2 -->
+              <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-cyber-cyan/20 text-cyber-cyan flex items-center justify-center font-bold font-mono text-xs">
+                    N2
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-xs text-white">node-madrid-02</span>
+                      <span class="text-[10px] font-mono bg-slate-800 text-slate-300 px-1.5 py-0.2 rounded">SEGUIDOR</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 font-mono">10.0.1.11:9001</span>
+                  </div>
+                </div>
+                <div class="text-right font-mono text-xs">
+                  <span class="text-cyber-cyan font-bold">100% OK</span>
+                  <div class="text-[10px] text-slate-500">Lag: 0 msgs</div>
+                </div>
+              </div>
+
+              <!-- Node 3 -->
+              <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-cyber-cyan/20 text-cyber-cyan flex items-center justify-center font-bold font-mono text-xs">
+                    N3
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-xs text-white">node-frankfurt-03</span>
+                      <span class="text-[10px] font-mono bg-slate-800 text-slate-300 px-1.5 py-0.2 rounded">SEGUIDOR</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 font-mono">10.0.1.12:9002</span>
+                  </div>
+                </div>
+                <div class="text-right font-mono text-xs">
+                  <span class="text-cyber-cyan font-bold">100% OK</span>
+                  <div class="text-[10px] text-slate-500">Lag: 0 msgs</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-800 flex gap-2">
+              <button onclick="simulateNodeFailover()" class="flex-1 py-2 px-3 rounded-lg bg-cyber-amber/10 hover:bg-cyber-amber/20 text-cyber-amber border border-cyber-amber/30 text-xs font-mono font-semibold transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Simular Falha do Líder #1
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Live Distributed Event Stream Console -->
+        <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-sm text-white flex items-center gap-2 font-mono">
+              <i class="fa-solid fa-terminal text-brand-400"></i>
+              Feed de Eventos da Malha Transacional (A2A / Raft / NATS)
+            </h3>
+            <button onclick="clearEventLogs()" class="text-xs text-slate-400 hover:text-slate-200 transition">
+              <i class="fa-solid fa-trash-can"></i> Limpar
+            </button>
+          </div>
+          <div id="live-log-console" class="h-44 bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-xs overflow-y-auto space-y-1.5">
+            <!-- Dynamic logs inserted here via JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB 2: NATS + QUIC, OUTBOX & DEAD LETTER QUEUE (DLQ)             -->
+      <!-- ================================================================ -->
+      <div id="tab-nats-outbox" class="tab-content space-y-6 hidden animate__animated animate__fadeIn">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-network-wired text-cyber-cyan"></i>
+              Mensageria NATS + QUIC & Transactional Outbox Pattern
+            </h2>
+            <p class="text-xs text-slate-400">Streams multiplexados, garantia de entrega At-Least-Once e isolamento de falhas na DLQ.</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="publishMockMessage(false)" class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-black font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-brand-500/20">
+              <i class="fa-solid fa-paper-plane"></i> Publicar Evento Normal
+            </button>
+            <button onclick="publishMockMessage(true)" class="px-4 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-bold text-xs transition flex items-center gap-2">
+              <i class="fa-solid fa-skull"></i> Injetar Poison Pill
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- Transactional Outbox Records Table -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-bold text-sm text-white font-mono flex items-center gap-2">
+                <i class="fa-solid fa-database text-cyber-cyan"></i>
+                Registos Persistidos no Transactional Outbox
+              </h3>
+              <span class="text-xs font-mono text-slate-400" id="outbox-count">2 registos</span>
+            </div>
+
+            <div class="overflow-x-auto flex-1">
+              <table class="w-full text-left font-mono text-xs">
+                <thead>
+                  <tr class="border-b border-slate-800 text-slate-400">
+                    <th class="pb-2">ID</th>
+                    <th class="pb-2">Subject NATS</th>
+                    <th class="pb-2">Status</th>
+                    <th class="pb-2">Tentativas</th>
+                  </tr>
+                </thead>
+                <tbody id="outbox-table-body" class="divide-y divide-slate-800/60 text-slate-300">
+                  <!-- Dynamic rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Dead Letter Queue (DLQ) Inspector -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-cyber-rose/30 flex flex-col glow-rose">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-bold text-sm text-white font-mono flex items-center gap-2">
+                <i class="fa-solid fa-skull-crossbones text-cyber-rose"></i>
+                Dead Letter Queue (DLQ / Mensagens Envenenadas)
+              </h3>
+              <button onclick="drainDLQ()" class="px-2.5 py-1 rounded bg-rose-950 text-rose-300 hover:bg-rose-900 text-[11px] font-mono font-bold transition">
+                <i class="fa-solid fa-recycle"></i> Purgar/Reenviar
+              </button>
+            </div>
+
+            <div class="space-y-3 flex-1 overflow-y-auto max-h-[320px]" id="dlq-container">
+              <!-- DLQ Items inserted here -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB 3: RAFT & SAGAS DISTRIBUÍDAS (ROLLBACK ORCHESTRATOR)         -->
+      <!-- ================================================================ -->
+      <div id="tab-raft-sagas" class="tab-content space-y-6 hidden animate__animated animate__fadeIn">
+        <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-arrows-split-up-and-left text-cyber-amber"></i>
+              Orquestrador de Sagas com Rollback Reverso LIFO
+            </h2>
+            <p class="text-xs text-slate-400">Coordenação de transações distribuídas entre compras, tesouraria, WMS e fiscalidade.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 text-xs font-mono text-slate-300 cursor-pointer">
+              <input type="checkbox" id="chk-fail-step4" class="rounded bg-slate-800 border-slate-700 text-cyber-amber focus:ring-cyber-amber">
+              <span>Simular Falha na Etapa #4 (Fiscal)</span>
+            </label>
+            <button onclick="runSagaDemo()" class="px-4 py-2 rounded-xl bg-cyber-amber hover:bg-amber-500 text-black font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-cyber-amber/20">
+              <i class="fa-solid fa-play"></i> Executar Saga #88401
+            </button>
+          </div>
+        </div>
+
+        <!-- Visual Saga Stepper -->
+        <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="saga-steps-container">
+            
+            <!-- Step 1 -->
+            <div id="saga-step-1" class="p-4 rounded-xl bg-slate-950 border border-slate-800 transition-all">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-mono font-bold text-slate-400">Passo 1</span>
+                <span class="step-badge text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">AGUARDANDO</span>
+              </div>
+              <h4 class="font-bold text-sm text-white mb-1">Criar Ordem Compra</h4>
+              <p class="text-[11px] text-slate-400 mb-2">AgenteComprasERP</p>
+              <div class="text-[10px] font-mono text-slate-500 bg-slate-900 p-2 rounded">
+                Compensação: Cancelar Ordem
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div id="saga-step-2" class="p-4 rounded-xl bg-slate-950 border border-slate-800 transition-all">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-mono font-bold text-slate-400">Passo 2</span>
+                <span class="step-badge text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">AGUARDANDO</span>
+              </div>
+              <h4 class="font-bold text-sm text-white mb-1">Reservar Saldo</h4>
+              <p class="text-[11px] text-slate-400 mb-2">AgenteTesouraria</p>
+              <div class="text-[10px] font-mono text-slate-500 bg-slate-900 p-2 rounded">
+                Compensação: Desbloquear Saldo
+              </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div id="saga-step-3" class="p-4 rounded-xl bg-slate-950 border border-slate-800 transition-all">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-mono font-bold text-slate-400">Passo 3</span>
+                <span class="step-badge text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">AGUARDANDO</span>
+              </div>
+              <h4 class="font-bold text-sm text-white mb-1">Alocar Stock WMS</h4>
+              <p class="text-[11px] text-slate-400 mb-2">AgenteArmazemWMS</p>
+              <div class="text-[10px] font-mono text-slate-500 bg-slate-900 p-2 rounded">
+                Compensação: Repor Stock
+              </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div id="saga-step-4" class="p-4 rounded-xl bg-slate-950 border border-slate-800 transition-all">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-mono font-bold text-slate-400">Passo 4</span>
+                <span class="step-badge text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">AGUARDANDO</span>
+              </div>
+              <h4 class="font-bold text-sm text-white mb-1">Auditar Guia Fiscal</h4>
+              <p class="text-[11px] text-slate-400 mb-2">AgenteFiscalAT</p>
+              <div class="text-[10px] font-mono text-slate-500 bg-slate-900 p-2 rounded">
+                Compensação: Anular Registo
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Status Banner -->
+          <div class="mt-5 p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between font-mono text-xs" id="saga-status-banner">
+            <span class="text-slate-400">Estado da Transação Saga:</span>
+            <span class="font-bold text-brand-400" id="saga-state-label">Pronto para execução</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB 4: MULTI-PROVIDER AI GATEWAY & CONTROLO DE CUSTOS            -->
+      <!-- ================================================================ -->
+      <div id="tab-ai-gateway" class="tab-content space-y-6 hidden animate__animated animate__fadeIn">
+        
+        <!-- Budget Tracker & Strategy Selector -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                  <i class="fa-solid fa-coins text-cyber-amber"></i>
+                  Governança Orçamental Global de LLMs
+                </h3>
+                <span class="font-mono text-xs text-cyber-amber font-bold" id="budget-percentage">16.8% utilizado</span>
+              </div>
+              <p class="text-xs text-slate-400 mb-4">Hard Cap configurado em $25.00 USD/dia. Bloqueio automático ao atingir 100%.</p>
+              
+              <!-- Progress Bar -->
+              <div class="w-full bg-slate-950 h-3.5 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                <div id="budget-progress-bar" class="bg-gradient-to-r from-brand-500 via-cyber-cyan to-cyber-amber h-full rounded-full transition-all duration-500" style="width: 16.8%"></div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs font-mono text-slate-400 gap-2">
+              <span>Gasto Hoje: <b class="text-white font-bold" id="budget-spent-val">$4.21 USD</b></span>
+              <span>Limite Diário: <b class="text-slate-200">$25.00 USD</b></span>
+              <span>Economia com Roteamento: <b class="text-brand-400 font-bold">$18.90 USD</b></span>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+            <h3 class="font-bold text-sm text-white mb-2 flex items-center gap-2">
+              <i class="fa-solid fa-route text-cyber-purple"></i>
+              Estratégia Ativa de Roteamento
+            </h3>
+            <select id="sel-routing-strategy" class="bg-slate-950 border border-slate-800 text-xs font-mono text-slate-200 rounded-xl p-3 focus:border-cyber-cyan outline-none">
+              <option value="priority_fallback">1. Priority Fallback (Cascata P1 -> P5)</option>
+              <option value="least_cost" selected>2. Least Cost (Otimização de Custo)</option>
+              <option value="lowest_latency">3. Lowest Latency (EWMA Dinâmica)</option>
+              <option value="weighted_round_robin">4. Weighted Round Robin</option>
+            </select>
+            <button onclick="testAiInference()" class="mt-3 py-2.5 px-4 rounded-xl bg-cyber-purple hover:bg-purple-500 text-white font-bold text-xs transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Testar Roteamento de Prompt
+            </button>
+          </div>
+        </div>
+
+        <!-- Providers Matrix Table -->
+        <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+          <h3 class="font-bold text-sm text-white mb-4 flex items-center gap-2 font-mono">
+            <i class="fa-solid fa-microchip text-cyber-cyan"></i>
+            Estado dos Provedores & Disjuntores (Circuit Breakers)
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" id="providers-grid">
+            <!-- Dynamic provider cards -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB 5: ENXAME DE AGENTES (SWARM MESH & CNP AUCTION)              -->
+      <!-- ================================================================ -->
+      <div id="tab-swarm-mesh" class="tab-content space-y-6 hidden animate__animated animate__fadeIn">
+        <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-hive text-amber-400"></i>
+              Enxame de Agentes Local & Malha Distribuída (P2P Mesh)
+            </h2>
+            <p class="text-xs text-slate-400">Leilão descentralizado Contract Net Protocol (CNP) e transferências de contexto sem líder.</p>
+          </div>
+          <button onclick="dispatchSwarmMission()" class="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-black font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-amber-400/20">
+            <i class="fa-solid fa-bullhorn"></i> Disparar Missão no Swarm
+          </button>
+        </div>
+
+        <!-- Swarm Agent Registry Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-filter"></i>
+              </div>
+              <div>
+                <h4 class="font-bold text-sm text-white">agt-triagem-01</h4>
+                <span class="text-[10px] font-mono text-brand-400">⚡ LOCAL THREAD</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">Análise preliminar de risco, classificação de payload e orquestração inicial.</p>
+            <div class="text-[11px] font-mono text-slate-400 space-y-1 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+              <div>Custo Base: <b>0.01 EUR</b></div>
+              <div>Reputação: <b class="text-brand-400">0.98</b></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-xl bg-cyber-cyan/20 text-cyber-cyan flex items-center justify-center text-lg">
+                <i class="fa-solid fa-stamp"></i>
+              </div>
+              <div>
+                <h4 class="font-bold text-sm text-white">agt-fiscal-pt</h4>
+                <span class="text-[10px] font-mono text-cyber-cyan">🌐 EDGE NODE (Madrid)</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">Validação tributária de NIFs comunitários, cálculo de alíquotas IVA e retenção.</p>
+            <div class="text-[11px] font-mono text-slate-400 space-y-1 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+              <div>Custo Base: <b>0.04 EUR</b></div>
+              <div>Reputação: <b class="text-cyber-cyan">0.95</b></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-xl bg-cyber-purple/20 text-cyber-purple flex items-center justify-center text-lg">
+                <i class="fa-solid fa-building-columns"></i>
+              </div>
+              <div>
+                <h4 class="font-bold text-sm text-white">agt-tesouraria-cloud</h4>
+                <span class="text-[10px] font-mono text-cyber-purple">☁️ CLOUD (Frankfurt)</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">Autorização de débitos diretos SEPA e integração com core banking.</p>
+            <div class="text-[11px] font-mono text-slate-400 space-y-1 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+              <div>Custo Base: <b>0.08 EUR</b></div>
+              <div>Reputação: <b class="text-cyber-purple">0.99</b></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Handoff Trace Visualization -->
+        <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+          <h3 class="font-bold text-sm text-white mb-3 font-mono flex items-center gap-2">
+            <i class="fa-solid fa-shuffle text-amber-400"></i>
+            Rastro de Delegações & Handoffs Autônomos (CNP Chain)
+          </h3>
+          <div id="swarm-handoff-trace" class="space-y-2 font-mono text-xs bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div class="text-slate-500 italic">Dispare uma missão para visualizar o encadeamento de lances e handoffs em direto...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB 6: DATA MESH & GOVERNANÇA PII                                -->
+      <!-- ================================================================ -->
+      <div id="tab-data-mesh" class="tab-content space-y-6 hidden animate__animated animate__fadeIn">
+        <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-cubes-stacked text-cyan-400"></i>
+            Data Mesh Federado & Mascaramento Dinâmico de PII
+          </h2>
+          <p class="text-xs text-slate-400">Contratos de dados (Data Contracts), linhagem entre domínios e proteção em tempo de execução.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- Interactive PII Query Simulator -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+            <div>
+              <h3 class="font-bold text-sm text-white mb-3 font-mono flex items-center gap-2">
+                <i class="fa-solid fa-user-shield text-brand-400"></i>
+                Simulador de Acesso Interdomínios
+              </h3>
+              
+              <div class="space-y-3 font-mono text-xs">
+                <div>
+                  <label class="block text-slate-400 mb-1">Produto de Dados Selecionado:</label>
+                  <select id="sel-dp-product" class="w-full bg-slate-950 border border-slate-800 text-slate-200 p-2.5 rounded-lg outline-none">
+                    <option value="dp_faturas_fornecedores">dp_faturas_fornecedores (Domínio: Compras)</option>
+                    <option value="dp_inventario_wms">dp_inventario_wms (Domínio: Logística)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-slate-400 mb-1">Domínio do Agente Solicitante:</label>
+                  <select id="sel-requesting-domain" class="w-full bg-slate-950 border border-slate-800 text-slate-200 p-2.5 rounded-lg outline-none">
+                    <option value="fiscal_e_tributario">fiscal_e_tributario (Domínio Externo -> Aplica Mascaramento)</option>
+                    <option value="compras_e_fornecedores">compras_e_fornecedores (Mesmo Domínio -> Acesso Total)</option>
+                    <option value="auditoria_e_seguranca">auditoria_e_seguranca (Domínio de Auditoria -> Hashes)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <button onclick="queryDataMeshProduct()" class="mt-5 w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-black font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20">
+              <i class="fa-solid fa-magnifying-glass"></i> Consultar Porta de Saída do Produto
+            </button>
+          </div>
+
+          <!-- PII Query Results Box -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col">
+            <h3 class="font-bold text-sm text-white mb-3 font-mono flex items-center gap-2">
+              <i class="fa-solid fa-shield-cat text-cyber-amber"></i>
+              Resultado com Governança Computacional em Voo
+            </h3>
+            <div id="datamesh-result-box" class="flex-1 bg-slate-950 p-3.5 rounded-xl border border-slate-800 font-mono text-xs overflow-y-auto max-h-[260px] text-slate-300">
+              <span class="text-slate-500 italic">Execute uma consulta para inspecionar os dados mascarados...</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB 7: WASI SANDBOX & IAC / PAC SECURITY AUDITOR                 -->
+      <!-- ================================================================ -->
+      <div id="tab-wasi-iac" class="tab-content space-y-6 hidden animate__animated animate__fadeIn">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- WebAssembly Sandbox Runner -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-center mb-3">
+                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                  <i class="fa-solid fa-box text-brand-400"></i>
+                  Sandbox WebAssembly (WASI Fuel Meter)
+                </h3>
+                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-brand-950 text-brand-400 border border-brand-800">
+                  wasm32-wasi
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 mb-4">Execução isolada com medição de instruções e bloqueio de memória linear.</p>
+
+              <div class="space-y-3 font-mono text-xs">
+                <div>
+                  <label class="block text-slate-400 mb-1">Módulo Plugin Wasm:</label>
+                  <select id="sel-wasm-plugin" class="w-full bg-slate-950 border border-slate-800 text-slate-200 p-2.5 rounded-lg outline-none">
+                    <option value="fiscal_safe">PluginFiscalERP (Seguro / Invoca Host Function de IVA)</option>
+                    <option value="infinite_loop">PluginMaliciosoDoS (Laço Infinito -> Esgota Combustível)</option>
+                    <option value="memory_oob">PluginViolaMemoria (Acesso 0x100000 -> Trap de Memória)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <button onclick="runWasiSandbox()" class="mt-5 w-full py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-black font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20">
+              <i class="fa-solid fa-play"></i> Executar Módulo na Sandbox
+            </button>
+          </div>
+
+          <!-- Policy as Code (PaC) Guardrails Matrix -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col">
+            <h3 class="font-bold text-sm text-white mb-3 font-mono flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-cyber-cyan"></i>
+              Matriz de Conformidade Policy as Code (PaC)
+            </h3>
+            
+            <div class="space-y-2.5 flex-1 font-mono text-xs">
+              <div class="p-3 rounded-lg bg-slate-950 border border-brand-500/30 flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-white">SEC-001: Criptografia AES-256 em Repouso</div>
+                  <div class="text-[10px] text-slate-400">Obrigatória para bases de dados e buckets</div>
+                </div>
+                <span class="text-brand-400 font-bold text-[11px]"><i class="fa-solid fa-check"></i> CONFORME</span>
+              </div>
+
+              <div class="p-3 rounded-lg bg-slate-950 border border-brand-500/30 flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-white">SEC-002: Isolamento de Bases de Dados</div>
+                  <div class="text-[10px] text-slate-400">Proibição de IPs públicos na porta 5432</div>
+                </div>
+                <span class="text-brand-400 font-bold text-[11px]"><i class="fa-solid fa-check"></i> CONFORME</span>
+              </div>
+
+              <div class="p-3 rounded-lg bg-slate-950 border border-cyber-amber/30 flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-white">FIN-005: Teto de Custo Individual (>2000 EUR)</div>
+                  <div class="text-[10px] text-slate-400">Requer autorização financeira</div>
+                </div>
+                <span class="text-cyber-amber font-bold text-[11px]"><i class="fa-solid fa-triangle-exclamation"></i> AVISO AUDITORIA</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB 8: CLIENTE API REST & RASTREAMENTO OPENTELEMETRY (OTLP)       -->
+      <!-- ================================================================ -->
+      <div id="tab-api-playground" class="tab-content space-y-6 hidden animate__animated animate__fadeIn">
+        <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-terminal text-cyber-cyan"></i>
+            Consola Interativa REST API & Rastreamento OTLP W3C
+          </h2>
+          <p class="text-xs text-slate-400">Teste chamadas à API em tempo real com injeção automática de traceparent W3C.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- Request Composer -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4 font-mono text-xs">
+            <div class="flex gap-2">
+              <select id="api-method" class="bg-slate-950 border border-slate-800 text-brand-400 font-bold px-3 py-2 rounded-lg outline-none">
+                <option>POST</option>
+                <option>GET</option>
+              </select>
+              <input type="text" id="api-endpoint" value="/api/v1/swarm/dispatch" class="flex-1 bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-lg outline-none focus:border-cyber-cyan">
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Payload JSON da Requisição:</label>
+              <textarea id="api-payload" rows="5" class="w-full bg-slate-950 border border-slate-800 text-slate-200 p-3 rounded-lg outline-none focus:border-cyber-cyan font-mono text-xs">{
+  "mission": "AuditoriaFiscalEEstoque",
+  "valor_eur": 7850.00,
+  "sku": "SRV-DELL-R650",
+  "priority": "HIGH"
+}</textarea>
+            </div>
+
+            <div class="flex justify-between items-center pt-2">
+              <span class="text-slate-500 text-[11px]">Injeta cabeçalho: <code>00-{trace_id}-{span_id}-01</code></span>
+              <button onclick="executeApiRequest()" class="px-5 py-2.5 rounded-xl bg-cyber-cyan hover:bg-sky-400 text-black font-bold transition flex items-center gap-2 shadow-lg shadow-cyber-cyan/20">
+                <i class="fa-solid fa-play"></i> Enviar Requisição
+              </button>
+            </div>
+          </div>
+
+          <!-- Response Viewer & Trace Timeline -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="font-bold text-sm text-white font-mono flex items-center gap-2">
+                <i class="fa-solid fa-code text-brand-400"></i>
+                Resposta HTTP & Spans OTLP
+              </h3>
+              <span id="api-status-pill" class="text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-slate-800 text-slate-400">200 OK</span>
+            </div>
+
+            <pre id="api-response-body" class="flex-1 bg-slate-950 p-3.5 rounded-xl border border-slate-800 font-mono text-xs overflow-y-auto max-h-[300px] text-brand-400 select-all"></pre>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- 3. TOAST CONTAINER DE NOTIFICAÇÕES                                     -->
+  <!-- ====================================================================== -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ====================================================================== -->
+  <!-- 4. LÓGICA COMPLETA JAVASCRIPT & MOTOR SIMULADO DA API                  -->
+  <!-- ====================================================================== -->
+  <script>
+    // ========================================================================
+    // A. ESTADO REATIVO GLOBAL DO DASHBOARD
+    // ========================================================================
+    const AppState = {
+      lmaxThroughput: 18.45,
+      raftTerm: 42,
+      activeLeaderId: 1,
+      aiSpentUsd: 4.21,
+      aiDailyBudget: 25.00,
+      activeAgents: 14,
+      dlqItems: [
+        { id: 9901, subject: "pedidos.pagamento.processados", error: "Falha de validação Ed25519 (Poison Pill)", retries: 3 }
+      ],
+      outboxRecords: [
+        { id: 1041, subject: "auditoria.fiscal.validada", status: "PUBLICADO", retries: 1 },
+        { id: 1042, subject: "pagamentos.sepa.cifrados", status: "PENDENTE", retries: 0 }
+      ],
+      providers: [
+        { id: "gemini", name: "Gemini 2.5 Flash", cost: "$0.075/1M", state: "closed", p95: "45ms", reqs: 1420 },
+        { id: "deepseek", name: "DeepSeek V3", cost: "$0.14/1M", state: "closed", p95: "55ms", reqs: 890 },
+        { id: "claude", name: "Claude 3.5 Sonnet", cost: "$3.00/1M", state: "closed", p95: "90ms", reqs: 310 },
+        { id: "openai", name: "GPT-4o", cost: "$2.50/1M", state: "closed", p95: "80ms", reqs: 240 },
+        { id: "ollama", name: "Ollama Llama3 (Local)", cost: "$0.00/1M", state: "closed", p95: "25ms", reqs: 3400 }
+      ],
+      chartInstance: null
+    };
+
+    // ========================================================================
+    // B. INICIALIZAÇÃO & GESTÃO DE TABS
+    // ========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      initClock();
+      initLiveMetricsChart();
+      renderOutboxTable();
+      renderDlq();
+      renderProvidersGrid();
+      startLiveTelemetryTicks();
+
+      // Log inicial de arranque
+      addLogEntry("⚡ AGENTD Daemon inicializado com sucesso no PID 12480 (Porta: 9000)", "green");
+      addLogEntry("👑 Consenso Raft estabelecido com quórum total (3/3 nós)", "cyan");
+      addLogEntry("🗜️ LMAX Ring Buffer ativo com 65536 slots (Lock-Free)", "purple");
+    });
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(el => {
+        el.classList.remove('bg-brand-500/10', 'text-brand-400', 'border', 'border-brand-500/20');
+        el.classList.add('text-slate-300');
+      });
+
+      const selectedTab = document.getElementById(`tab-${tabId}`);
+      if (selectedTab) {
+        selectedTab.classList.remove('hidden');
+      }
+
+      const activeBtn = document.getElementById(`btn-tab-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-300');
+        activeBtn.classList.add('bg-brand-500/10', 'text-brand-400', 'border', 'border-brand-500/20');
+      }
+    }
+
+    // ========================================================================
+    // C. GRÁFICO CHART.JS EM TEMPO REAL
+    // ========================================================================
+    function initLiveMetricsChart() {
+      const ctx = document.getElementById('liveMetricsChart').getContext('2d');
+      const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+      gradient.addColorStop(0, 'rgba(56, 189, 248, 0.35)');
+      gradient.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+
+      AppState.chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['-10s', '-8s', '-6s', '-4s', '-2s', 'Agora'],
+          datasets: [{
+            label: 'Vazão (M ops/s)',
+            data: [17.2, 17.8, 18.1, 18.5, 18.3, 18.45],
+            borderColor: '#38bdf8',
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: '#38bdf8'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 } }
+            },
+            y: {
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    function startLiveTelemetryTicks() {
+      setInterval(() => {
+        // Micro-flutuação de vazão LMAX
+        const delta = (Math.random() * 0.4 - 0.2);
+        AppState.lmaxThroughput = Math.max(16.0, Math.min(22.0, AppState.lmaxThroughput + delta));
+        
+        document.getElementById('stat-lmax').textContent = AppState.lmaxThroughput.toFixed(2);
+        document.getElementById('header-throughput').textContent = `${AppState.lmaxThroughput.toFixed(2)} M ops/s`;
+
+        // Atualização do gráfico
+        if (AppState.chartInstance) {
+          const data = AppState.chartInstance.data.datasets[0].data;
+          data.shift();
+          data.push(AppState.lmaxThroughput);
+          AppState.chartInstance.update('none');
+        }
+      }, 1500);
+    }
+
+    // ========================================================================
+    // D. GESTOR DE LOGS E FEED EM TEMPO REAL
+    // ========================================================================
+    function addLogEntry(text, color = "slate") {
+      const consoleEl = document.getElementById('live-log-console');
+      const timeStr = new Date().toISOString().substring(11, 19);
+      
+      const corClass = {
+        green: "text-brand-400",
+        cyan: "text-cyber-cyan",
+        purple: "text-cyber-purple",
+        amber: "text-cyber-amber",
+        red: "text-cyber-rose",
+        slate: "text-slate-300"
+      }[color] || "text-slate-300";
+
+      const line = document.createElement('div');
+      line.className = "flex items-start gap-2 leading-relaxed animate__animated animate__fadeIn";
+      line.innerHTML = `<span class="text-slate-500">[${timeStr}]</span> <span class="${corClass}">${text}</span>`;
+      
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function clearEventLogs() {
+      document.getElementById('live-log-console').innerHTML = '';
+      addLogEntry("Console limpo pelo operador.", "slate");
+    }
+
+    // ========================================================================
+    // E. NATS + OUTBOX & DEAD LETTER QUEUE (DLQ)
+    // ========================================================================
+    function renderOutboxTable() {
+      const tbody = document.getElementById('outbox-table-body');
+      tbody.innerHTML = AppState.outboxRecords.map(r => `
+        <tr class="hover:bg-slate-900/50 transition">
+          <td class="py-2 text-slate-400">#${r.id}</td>
+          <td class="py-2 font-bold text-cyber-cyan">${r.subject}</td>
+          <td class="py-2"><span class="px-2 py-0.5 rounded text-[10px] ${r.status === 'PUBLICADO' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}">${r.status}</span></td>
+          <td class="py-2 text-slate-400">${r.retries}</td>
+        </tr>
+      `).join('');
+      document.getElementById('outbox-count').textContent = `${AppState.outboxRecords.len || AppState.outboxRecords.length} registos`;
+    }
+
+    function renderDlq() {
+      const container = document.getElementById('dlq-container');
+      if (AppState.dlqItems.length === 0) {
+        container.innerHTML = `<div class="text-slate-500 font-mono text-xs italic p-4 text-center">Nenhuma mensagem envenenada na DLQ.</div>`;
+        document.getElementById('stat-dlq-count').textContent = "0";
+        return;
+      }
+
+      container.innerHTML = AppState.dlqItems.map(item => `
+        <div class="p-3 rounded-xl bg-slate-950 border border-rose-900/40 font-mono text-xs space-y-1">
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-rose-400">ID #${item.id}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800">Tentativas: ${item.retries}</span>
+          </div>
+          <div class="text-slate-300 text-[11px]">${item.subject}</div>
+          <div class="text-slate-500 text-[10px]">Causa: ${item.error}</div>
+        </div>
+      `).join('');
+      document.getElementById('stat-dlq-count').textContent = AppState.dlqItems.length;
+    }
+
+    function publishMockMessage(isPoison) {
+      const newId = 1043 + AppState.outboxRecords.length;
+      if (isPoison) {
+        AppState.dlqItems.push({
+          id: newId,
+          subject: "pedidos.pagamento.recusado",
+          error: "Cartão de Crédito Inválido (Poison Pill Detectada)",
+          retries: 3
+        });
+        addLogEntry(`🛑 [DLQ Triggered] Mensagem #${newId} transferida para a Dead Letter Queue após 3 falhas.`, "red");
+        triggerNotification("Poison Pill isolada na Dead Letter Queue com sucesso!", "error");
+      } else {
+        AppState.outboxRecords.unshift({
+          id: newId,
+          subject: "pedidos.venda.faturado",
+          status: "PUBLICADO",
+          retries: 0
+        });
+        addLogEntry(`✓ [Outbox / NATS] Evento #${newId} gravado e despachado no QUIC Stream #${newId}.`, "green");
+        triggerNotification("Evento publicado no Transactional Outbox!", "success");
+      }
+      renderOutboxTable();
+      renderDlq();
+    }
+
+    function drainDLQ() {
+      if (AppState.dlqItems.length === 0) return;
+      AppState.dlqItems = [];
+      renderDlq();
+      addLogEntry("✓ DLQ purgada com sucesso pelo operador.", "amber");
+      triggerNotification("Dead Letter Queue limpa com sucesso!", "info");
+    }
+
+    // ========================================================================
+    // F. ORQUESTRADOR DE SAGAS (ROLLBACK REVERSO)
+    // ========================================================================
+    async function runSagaDemo() {
+      const shouldFailStep4 = document.getElementById('chk-fail-step4').checked;
+      const bannerLabel = document.getElementById('saga-state-label');
+      
+      // Reset steps visual
+      for (let s = 1; s <= 4; s++) {
+        const stepEl = document.getElementById(`saga-step-${s}`);
+        stepEl.className = "p-4 rounded-xl bg-slate-950 border border-slate-800 transition-all";
+        stepEl.querySelector('.step-badge').textContent = "AGUARDANDO";
+        stepEl.querySelector('.step-badge').className = "step-badge text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400";
+      }
+
+      bannerLabel.textContent = "A executar transações em cadeia...";
+      bannerLabel.className = "font-bold text-cyber-cyan";
+
+      const setStep = (num, status, bg, text) => {
+        const el = document.getElementById(`saga-step-${num}`);
+        el.className = `p-4 rounded-xl bg-slate-950 border ${bg} transition-all`;
+        const badge = el.querySelector('.step-badge');
+        badge.textContent = text;
+        badge.className = `step-badge text-[10px] font-mono px-2 py-0.5 rounded ${bg} ${text}`;
+      };
+
+      // Step 1
+      addLogEntry("⏳ [Saga #88401] Passo 1: A criar ordem de compra no ERP...", "cyan");
+      setStep(1, "running", "border-cyber-cyan", "text-cyber-cyan");
+      await new Promise(r => setTimeout(r, 600));
+      setStep(1, "done", "border-brand-500", "text-brand-400");
+      addLogEntry("✓ [Saga #88401] Passo 1: Ordem criada com sucesso.", "green");
+
+      // Step 2
+      addLogEntry("⏳ [Saga #88401] Passo 2: A reservar 7.850,00 EUR na tesouraria...", "cyan");
+      setStep(2, "running", "border-cyber-cyan", "text-cyber-cyan");
+      await new Promise(r => setTimeout(r, 600));
+      setStep(2, "done", "border-brand-500", "text-brand-400");
+      addLogEntry("✓ [Saga #88401] Passo 2: Saldo cativo com sucesso.", "green");
+
+      // Step 3
+      addLogEntry("⏳ [Saga #88401] Passo 3: A alocar 10 servidores no inventário WMS...", "cyan");
+      setStep(3, "running", "border-cyber-cyan", "text-cyber-cyan");
+      await new Promise(r => setTimeout(r, 600));
+      setStep(3, "done", "border-brand-500", "text-brand-400");
+      addLogEntry("✓ [Saga #88401] Passo 3: Inventário alocado com sucesso.", "green");
+
+      // Step 4
+      addLogEntry("⏳ [Saga #88401] Passo 4: A auditar guia fiscal de transporte na AT...", "cyan");
+      setStep(4, "running", "border-cyber-cyan", "text-cyber-cyan");
+      await new Promise(r => setTimeout(r, 700));
+
+      if (shouldFailStep4) {
+        setStep(4, "failed", "border-rose-500", "text-rose-400");
+        addLogEntry("❌ [Saga #88401] Passo 4: Divergência Fiscal! A disparar ROLLBACK REVERSO (3 -> 2 -> 1)...", "red");
+        bannerLabel.textContent = "Falha na etapa 4! A executar compensações LIFO...";
+        bannerLabel.className = "font-bold text-cyber-rose";
+
+        // Rollback Step 3
+        await new Promise(r => setTimeout(r, 600));
+        setStep(3, "compensated", "border-cyber-amber", "text-cyber-amber");
+        addLogEntry("↩️ [Saga Rollback] Passo 3: Inventário WMS libertado e reposto.", "amber");
+
+        // Rollback Step 2
+        await new Promise(r => setTimeout(r, 600));
+        setStep(2, "compensated", "border-cyber-amber", "text-cyber-amber");
+        addLogEntry("↩️ [Saga Rollback] Passo 2: 7.850,00 EUR devolvidos à conta da tesouraria.", "amber");
+
+        // Rollback Step 1
+        await new Promise(r => setTimeout(r, 600));
+        setStep(1, "compensated", "border-cyber-amber", "text-cyber-amber");
+        addLogEntry("↩️ [Saga Rollback] Passo 1: Ordem de compra cancelada no ERP.", "amber");
+
+        bannerLabel.textContent = "Transação 100% compensada e consistência preservada!";
+        bannerLabel.className = "font-bold text-cyber-amber";
+        triggerNotification("Saga revertida com sucesso em ordem inversa!", "warning");
+      } else {
+        setStep(4, "done", "border-brand-500", "text-brand-400");
+        addLogEntry("✓ [Saga #88401] Passo 4: Guia fiscal validada. SAGA CONCLUÍDA COM SUCESSO!", "green");
+        bannerLabel.textContent = "Saga concluída com sucesso e consistência total!";
+        bannerLabel.className = "font-bold text-brand-400";
+        triggerNotification("Saga concluída com 100% de sucesso!", "success");
+      }
+    }
+
+    // ========================================================================
+    // G. MULTI-PROVIDER AI GATEWAY & DISJUNTORES
+    // ========================================================================
+    function renderProvidersGrid() {
+      const grid = document.getElementById('providers-grid');
+      grid.innerHTML = AppState.providers.map(p => `
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold text-white font-mono">${p.name}</span>
+              <span class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${p.state === 'closed' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}">
+                ${p.state === 'closed' ? 'CLOSED' : 'OPEN'}
+              </span>
+            </div>
+            <div class="text-xs text-cyber-cyan font-mono font-bold mb-2">${p.cost}</div>
+          </div>
+          <div class="text-[11px] font-mono text-slate-400 space-y-1 border-t border-slate-900 pt-2">
+            <div>Latência p95: <b class="text-slate-200">${p.p95}</b></div>
+            <div>Reqs: <b class="text-slate-200">${p.reqs}</b></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function testAiInference() {
+      const strategy = document.getElementById('sel-routing-strategy').value;
+      addLogEntry(`🤖 [AI Gateway] Requisição de inferência recebida. Estratégia: ${strategy}`, "purple");
+      
+      AppState.aiSpentUsd += 0.00045;
+      const pct = (AppState.aiSpentUsd / AppState.aiDailyBudget) * 100;
+      
+      document.getElementById('budget-spent-val').textContent = `$${AppState.aiSpentUsd.toFixed(4)} USD`;
+      document.getElementById('budget-percentage').textContent = `${pct.toFixed(1)}% utilizado`;
+      document.getElementById('budget-progress-bar').style.width = `${pct}%`;
+      document.getElementById('header-ai-budget').textContent = `$${AppState.aiSpentUsd.toFixed(2)} / $${AppState.aiDailyBudget.toFixed(2)}`;
+
+      addLogEntry("✓ [AI Gateway] Roteado para Gemini 2.5 Flash ($0.075/1M) - Latência: 42.1ms - Custo: $0.000045", "green");
+      triggerNotification("Roteamento de IA concluído com menor custo!", "success");
+    }
+
+    // ========================================================================
+    // H. SWARM LEILÃO CNP & DATA MESH QUERY
+    // ========================================================================
+    async function dispatchSwarmMission() {
+      const traceBox = document.getElementById('swarm-handoff-trace');
+      traceBox.innerHTML = '';
+
+      const appendTrace = (msg) => {
+        const div = document.createElement('div');
+        div.className = "leading-relaxed animate__animated animate__fadeIn";
+        div.innerHTML = msg;
+        traceBox.appendChild(div);
+      };
+
+      appendTrace("🐝 <b class='text-amber-400'>[Swarm Anúncio]</b> Nova missão #77001 anunciada: <code>FaturaCompra_7850EUR_DellServers</code>");
+      await new Promise(r => setTimeout(r, 400));
+
+      appendTrace("🏷️ <b class='text-cyber-cyan'>[Leilão CNP]</b> Lances recebidos: Agt-Cloud (8.5), Agt-Edge (4.3), <b class='text-brand-400'>Agt-Triagem-01 (1.2 - Vencedor)</b>");
+      await new Promise(r => setTimeout(r, 500));
+
+      appendTrace("🔀 <b class='text-cyber-purple'>[Autonomous Handoff #1]</b> agt-triagem-01 ➔ agt-fiscal-pt (Motivo: Validação NIF PT509887766)");
+      await new Promise(r => setTimeout(r, 600));
+
+      appendTrace("🔀 <b class='text-cyber-purple'>[Autonomous Handoff #2]</b> agt-fiscal-pt ➔ agt-tesouraria-cloud (Motivo: IVA 23% Aprovado -> Liquidação SEPA)");
+      await new Promise(r => setTimeout(r, 500));
+
+      appendTrace("🎉 <b class='text-brand-400'>[Missão Concluída]</b> Pagamento SEPA autorizado com integridade total pelo swarm!");
+      triggerNotification("Missão de Swarm executada via CNP!", "success");
+    }
+
+    function queryDataMeshProduct() {
+      const prod = document.getElementById('sel-dp-product').value;
+      const domain = document.getElementById('sel-requesting-domain').value;
+      const resultBox = document.getElementById('datamesh-result-box');
+
+      addLogEntry(`🌐 [Data Mesh] Consulta recebida em '${prod}' do domínio '${domain}'`, "cyan");
+
+      let nifVal = "PT509887766";
+      let ibanVal = "PT5000350100112233445501";
+
+      if (domain !== 'compras_e_fornecedores') {
+        nifVal = "PT5******66";
+        ibanVal = "SHA256:88a1b2c3d4e5f6";
+      }
+
+      const mockJson = {
+        data_product: prod,
+        domain_owner: "compras_e_fornecedores",
+        requesting_domain: domain,
+        lineage_logged: true,
+        records: [
+          {
+            fatura_id: "FT-2026/0091",
+            fornecedor_nif: nifVal,
+            iban_liquidacao: ibanVal,
+            valor_total_eur: 7850.00,
+            pii_governance_applied: domain !== 'compras_e_fornecedores'
+          }
+        ]
+      };
+
+      resultBox.innerHTML = `<pre class="text-brand-400 font-mono text-xs">${JSON.stringify(mockJson, null, 2)}</pre>`;
+      triggerNotification("Governança PII aplicada em tempo de execução!", "info");
+    }
+
+    function runWasiSandbox() {
+      const plugin = document.getElementById('sel-wasm-plugin').value;
+      if (plugin === 'fiscal_safe') {
+        addLogEntry("✓ [WASI Sandbox] PluginFiscalERP executado com 24 instruções de combustível. Total com IVA: 1.230,00 EUR", "green");
+        triggerNotification("Plugin WASI executado com isolamento seguro!", "success");
+      } else if (plugin === 'infinite_loop') {
+        addLogEntry("🛡️ [WASI Trap] Combustível Esgotado! Laço infinito interrompido após 500 instruções de CPU.", "red");
+        triggerNotification("Trap WASI: Combustível Esgotado!", "error");
+      } else {
+        addLogEntry("🛡️ [WASI Trap] MemoriaForaDosLimites! Tentativa de acesso a 0x100000 barrada.", "red");
+        triggerNotification("Trap WASI: Violação de Limites de Memória!", "error");
+      }
+    }
+
+    // ========================================================================
+    // I. API REST CLIENT SIMULATOR
+    // ========================================================================
+    function executeApiRequest() {
+      const endpoint = document.getElementById('api-endpoint').value;
+      const method = document.getElementById('api-method').value;
+      const respBox = document.getElementById('api-response-body');
+      const statusPill = document.getElementById('api-status-pill');
+
+      const traceId = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
+      const spanId = Array.from({length: 16}, () => Math.floor(Math.random()*16).toString(16)).join('');
+
+      statusPill.textContent = "200 OK";
+      statusPill.className = "text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800";
+
+      const mockResponse = {
+        status: "success",
+        http_code: 200,
+        endpoint: endpoint,
+        method: method,
+        w3c_traceparent: `00-${traceId}-${spanId}-01`,
+        execution_time_ms: 1.84,
+        cluster_leader: "node-lisboa-01",
+        raft_term: 42,
+        result: {
+          transaction_status: "COMMITTED_ACID",
+          wal_offset: 981240,
+          lmax_sequence: 500241,
+          zero_copy: true
+        }
+      };
+
+      respBox.textContent = JSON.stringify(mockResponse, null, 2);
+      addLogEntry(`📤 [REST API] ${method} ${endpoint} -> 200 OK (1.84ms)`, "cyan");
+      triggerNotification("API executada com cabeçalho W3C Traceparent!", "success");
+    }
+
+    function simulateNodeFailover() {
+      addLogEntry("💥 [Falha de Rede Simulada] Nó #1 Líder deixou de responder a batimentos cardíacos!", "red");
+      document.getElementById('header-raft-quorum').textContent = "2/3 Nós (Reelegendo)";
+      
+      setTimeout(() => {
+        AppState.raftTerm += 1;
+        document.getElementById('stat-raft-term').textContent = `Termo ${AppState.raftTerm}`;
+        document.getElementById('header-raft-quorum').textContent = "3/3 Nós Saudáveis";
+        addLogEntry(`👑 [Raft Eleição] Nó #2 (Madrid) eleito novo Líder no Termo ${AppState.raftTerm}!`, "green");
+        triggerNotification(`Nó #2 eleito novo Líder no Termo ${AppState.raftTerm}!`, "warning");
+      }, 1200);
+    }
+
+    // ========================================================================
+    // J. UTILITÁRIOS (CLOCK & TOAST NOTIFICATIONS)
+    // ========================================================================
+    function initClock() {
+      setInterval(() => {
+        const d = new Date();
+        document.getElementById('live-clock').textContent = d.toISOString().substring(11, 19) + ' UTC';
+      }, 1000);
+    }
+
+    function triggerNotification(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'border-brand-500 bg-slate-900 text-brand-400',
+        error: 'border-rose-500 bg-slate-900 text-rose-400',
+        warning: 'border-cyber-amber bg-slate-900 text-cyber-amber',
+        info: 'border-cyber-cyan bg-slate-900 text-cyber-cyan'
+      }[type];
+
+      const icons = {
+        success: 'fa-circle-check',
+        error: 'fa-circle-xmark',
+        warning: 'fa-triangle-exclamation',
+        info: 'fa-circle-info'
+      }[type];
+
+      toast.className = `p-3.5 rounded-xl border ${colors} shadow-2xl flex items-center gap-3 font-mono text-xs pointer-events-auto animate__animated animate__fadeInRight`;
+      toast.innerHTML = `<i class="fa-solid ${icons}"></i> <span>${message}</span>`;
+      
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove('animate__fadeInRight');
+        toast.classList.add('animate__fadeOutRight');
+        setTimeout(() => toast.remove(), 400);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
