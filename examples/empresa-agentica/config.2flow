@@ -1,0 +1,6 @@
+HomologarFornecedor !-> RejeitarFornecedor
+  :--: DarEntradaEstoque !-> EstornarEstoque
+  :--: [LiquidarContasPagar, RegistrarLancamentoContabil]
+  :--: PublicarCampanhaMarketing
+  :--: ProcessarPedidoVenda !-> CancelarReservaVenda
+  :--: NotificarDespachoCliente

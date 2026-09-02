@@ -1,0 +1,4 @@
+SanitizarEntrada !-> QuarentenaEvento
+  :--: [ExtrairEntidades, MascararPII, AnalisarSentimento]
+  :--: EnriquecerAnalitica
+  :--: ExportarDestino !-> RegistrarFalhaExportacao
