@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>2FLOW // A Linguagem de Orquestração Declarativa de Agentes e Sagas</title>
+  <meta name="description" content="Notação 2flow: DSL declarativa, concisa e simbólica para agentes autônomos, pipelines concorrentes fork-join e transações distribuídas saga com compilação comptime em Zig e 2FV em WebAssembly.">
+  <meta name="keywords" content="2flow, agentd, zig, comptime, saga pattern, fork-join, distributed systems, autonomous agents, wasm, allascode">
+  <meta name="author" content="AllasCode Runtime Research">
+
+  <!-- OpenGraph / Social -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="2FLOW // Orquestração Declarativa de Agentes e Sagas">
+  <meta property="og:description" content="Se você consegue desenhar no guardanapo, consegue expressar em uma única linha com garantia estática de tipos.">
+  <meta property="og:site_name" content="2flow">
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Background Grain Texture (Levo Studio Aesthetic) -->
+  <div class="bg-grain" aria-hidden="true"></div>
+
+  <!-- ====================================================================== -->
+  <!-- HEADER & LIVE CLUSTER TELEMETRY                                        -->
+  <!-- ====================================================================== -->
+  <header class="site-header" id="main-header">
+    <a href="#" class="brand-wrapper" aria-label="2flow Início">
+      <div class="brand-glyph">2F</div>
+      <div class="brand-title">
+        <div class="brand-name">
+          2FLOW <span class="brand-badge">v0.13.0 comptime</span>
+        </div>
+        <span class="brand-sub">agentd // allascode runtime</span>
+      </div>
+    </a>
+
+    <!-- Quick Cluster Telemetry -->
+    <div class="header-telemetry" aria-label="Telemetria do cluster">
+      <div class="telemetry-item">
+        <span class="telemetry-dot" aria-hidden="true"></span>
+        <span>AST: <strong id="ast-status">Static Validated</strong></span>
+      </div>
+      <div class="telemetry-item">
+        <span>2FV WASM: <strong>2.7 KB (&lt;0.05ms)</strong></span>
+      </div>
+      <div class="telemetry-item">
+        <span>Overhead: <strong>0.00ms (Zero-Heap)</strong></span>
+      </div>
+    </div>
+
+    <!-- Actions & Links -->
+    <div class="header-actions">
+      <a href="#playground" class="nav-link">Playground</a>
+      <a href="#sintese" class="nav-link">Síntese</a>
+      <a href="#playground" class="nav-btn" id="header-cta-btn">
+        <span>TESTAR DSL</span>
+        <span aria-hidden="true">→</span>
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <!-- ====================================================================== -->
+    <!-- SECTION 01: HERO                                                       -->
+    <!-- ====================================================================== -->
+    <section class="hero-section theme-obsidian" id="hero">
+      <div class="hero-glow-back" aria-hidden="true"></div>
+      
+      <div class="hero-content">
+        <div class="hero-meta">
+          <span class="hero-dot" aria-hidden="true"></span>
+          <span>SOTA-DD // AllasCode Multi-Plane Architecture</span>
+          <span style="color: var(--text-faint)">/</span>
+          <span>Zig 0.13+ Engine</span>
+        </div>
+
+        <h1 class="hero-title">
+          <span class="title-accent">O guardanapo virou código.</span>
+          <span class="title-dim">Orquestração agêntica em uma linha.</span>
+        </h1>
+
+        <p class="hero-lead">
+          Substitua centenas de linhas de YAML prolixo e o callback hell de microsserviços por uma DSL declarativa, causal e compilada 100% em <strong>comptime</strong>. Sequências, paralelismo Fork-Join, canais de Saga Rollback e autorização humana expressos de forma visual e matematicamente garantida.
+        </p>
+
+        <div class="hero-actions">
+          <a href="#filosofia" class="hero-btn-primary" id="btn-hero-explore">
+            Iniciar Experiência Guiada ↓
+          </a>
+          <a href="#sintese" class="hero-btn-secondary">
+            Ver Síntese de Arquitetura ⚡
+          </a>
+          <a href="#playground" class="hero-btn-secondary">
+            Abrir Playground Interativo 🎮
+          </a>
+        </div>
+
+        <!-- Telemetry Matrix -->
+        <div class="hero-matrix">
+          <div class="matrix-card">
+            <div class="matrix-label">Runtime Overhead</div>
+            <div class="matrix-value">0.00 <span class="unit">ms</span></div>
+            <div class="matrix-note">Abstração de custo zero via Zig comptime</div>
+          </div>
+          <div class="matrix-card">
+            <div class="matrix-label">Primitivas Universais</div>
+            <div class="matrix-value">4 <span class="unit">operadores</span></div>
+            <div class="matrix-note">Composição recursiva ortogonal</div>
+          </div>
+          <div class="matrix-card">
+            <div class="matrix-label">WASM 2FV Client Pre-Flight</div>
+            <div class="matrix-value">2.7 <span class="unit">KB</span></div>
+            <div class="matrix-note">90%+ de tráfego inválido eliminado no client</div>
+          </div>
+          <div class="matrix-card">
+            <div class="matrix-label">Garantia Transacional</div>
+            <div class="matrix-value">LIFO <span class="unit">Saga</span></div>
+            <div class="matrix-note">Compensação atômica automatizada</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-scroll-prompt" aria-hidden="true">
+        <span>Scroll Staged Experience</span>
+        <span class="scroll-line-indicator"></span>
+        <span>Fixe &amp; Anime com Scroll</span>
+      </div>
+    </section>
+
+    <!-- ====================================================================== -->
+    <!-- SECTION 02: 01 — PHILOSOPHY (STAGED PINNED SCROLL - INVERSE SLATE)     -->
+    <!-- ====================================================================== -->
+    <section class="staged-section theme-inverse-slate" id="filosofia" data-staged="true">
+      <div class="staged-sticky">
+        <div class="stage-glow glow-gold" style="bottom: -20vh; right: -10vw;" aria-hidden="true"></div>
+
+        <div class="staged-grid centered-layout">
+          <div>
+            <div class="stage-eyebrow">
+              <span class="stage-num">01</span>
+              <span>Filosofia de Arquitetura</span>
+            </div>
+
+            <h2 class="stage-title">Simplicidade Radical.</h2>
+
+            <p class="crawl-text" id="crawl-philosophy" data-crawl="true">
+              Se você consegue desenhar o fluxo em um <b class="highlight">guardanapo</b>, você deve conseguir expressá-lo diretamente no código com <b class="highlight">uma única linha</b>, <b class="highlight">sem intermediários</b> e com <b class="highlight">garantia estática</b> de que os tipos conversam entre si. Sem YAML frágil. Sem callbacks perdidos. Sem surpresas em produção.
+            </p>
+
+            <div class="pinbar">
+              <div class="pinbar-fill" id="pinbar-philosophy"></div>
+            </div>
+
+            <a href="#capability" class="stage-action">
+              <span>Continuar para Capability</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================== -->
+    <!-- SECTION 03: 02 — CAPABILITY (STAGED PINNED SCROLL - OBSIDIAN NOIR)     -->
+    <!-- ====================================================================== -->
+    <section class="staged-section theme-obsidian-noir" id="capability" data-staged="true">
+      <div class="staged-sticky">
+        <div class="stage-glow glow-cyan" style="top: -20vh; left: -10vw;" aria-hidden="true"></div>
+
+        <div class="staged-grid">
+          <!-- Left Column: Copy with Typewriter Crawl -->
+          <div>
+            <div class="stage-eyebrow">
+              <span class="stage-num">02</span>
+              <span>Capability</span>
+            </div>
+
+            <h2 class="stage-title">Software &amp; Plataformas</h2>
+
+            <p class="crawl-text" id="crawl-capability" data-crawl="true">
+              Pipelines de microsserviços, agentes autônomos, barramento de eventos e bancos distribuídos. Construído para ser <b class="highlight">manutenível</b>, validado estaticamente em <b class="highlight">comptime</b>, e entregue <b class="highlight">totalmente seu</b> — código nativo, fluxo linear e documentação executável.
+            </p>
+
+            <a href="#operadores" class="stage-action">
+              <span>Conhecer as 4 Primitivas</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+
+            <div class="pinbar">
+              <div class="pinbar-fill" id="pinbar-capability"></div>
+            </div>
+          </div>
+
+          <!-- Right Column: Vector Blueprint Drawing (Levo-Studio Inspired) -->
+          <div class="svg-blueprint-box">
+            <svg class="blueprint-svg" id="svg-capability" viewBox="0 0 440 360" fill="none" role="img" aria-label="Diagrama do sistema: interface, api, workers e postgres">
+              <!-- Interface Box (Top, Golden Accent) -->
+              <rect class="draw-stroke" id="cap-box-interface" x="70" y="30" width="300" height="62" rx="8" stroke="#FFB100" stroke-width="1.5"></rect>
+              <circle class="draw-fade pulse-indicator" id="cap-dot-interface" cx="220" cy="61" r="3.5" fill="#FFB100"></circle>
+              <text class="draw-fade" id="cap-text-interface" x="88" y="66" fill="#8A8A86" font-size="12" font-family="'JetBrains Mono', monospace" letter-spacing="1.5">interface</text>
+              <text class="draw-fade" id="cap-text-interface-status" x="290" y="66" fill="#FFB100" font-size="10" font-family="'JetBrains Mono', monospace">2FV: VALID</text>
+
+              <!-- Conduits from Interface to API & Workers -->
+              <path class="draw-stroke" id="cap-conduit-left" d="M150 92 V118 H105 V142" stroke="rgba(255,255,255,0.35)" stroke-width="1.2"></path>
+              <path class="draw-stroke" id="cap-conduit-right" d="M290 92 V118 H335 V142" stroke="rgba(255,255,255,0.35)" stroke-width="1.2"></path>
+
+              <!-- Left Branch: API -->
+              <rect class="draw-stroke" id="cap-box-api" x="20" y="142" width="170" height="64" rx="8" stroke="rgba(255,255,255,0.4)" stroke-width="1.2"></rect>
+              <text class="draw-fade" id="cap-text-api" x="40" y="178" fill="#8A8A86" font-size="12" font-family="'JetBrains Mono', monospace" letter-spacing="1.5">api :--: gateway</text>
+
+              <!-- Right Branch: Workers (Parallel Fork) -->
+              <rect class="draw-stroke" id="cap-box-workers" x="250" y="142" width="170" height="64" rx="8" stroke="rgba(255,255,255,0.4)" stroke-width="1.2"></rect>
+              <text class="draw-fade" id="cap-text-workers" x="270" y="178" fill="#8A8A86" font-size="12" font-family="'JetBrains Mono', monospace" letter-spacing="1.5">workers [fork]</text>
+
+              <!-- Conduits to Postgres / Storage -->
+              <path class="draw-stroke" id="cap-conduit-db-l" d="M105 206 V230 H220 V254" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"></path>
+              <path class="draw-stroke" id="cap-conduit-db-r" d="M335 206 V230 H220 V254" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"></path>
+
+              <!-- Bottom Box: Postgres / Persistence Store -->
+              <rect class="draw-stroke" id="cap-box-db" x="120" y="254" width="200" height="64" rx="8" stroke="rgba(255,255,255,0.25)" stroke-width="1.2"></rect>
+              <text class="draw-fade" id="cap-text-db" x="142" y="290" fill="#5A5A57" font-size="12" font-family="'JetBrains Mono', monospace" letter-spacing="1.5">postgres // ledger</text>
+
+              <!-- Traveling Packet Dot on Circuit -->
+              <circle id="cap-traveling-packet" cx="220" cy="92" r="3" fill="#38BDF8" opacity="0"></circle>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================== -->
+    <!-- SECTION 04: 03 — PRIMITIVES (STAGED PINNED SCROLL - INVERSE STEEL)     -->
+    <!-- ====================================================================== -->
+    <section class="staged-section theme-inverse-steel" id="operadores" data-staged="true">
+      <div class="staged-sticky">
+        <div class="stage-glow glow-emerald" style="top: -10vh; right: -10vw;" aria-hidden="true"></div>
+
+        <div class="staged-grid">
+          <div>
+            <div class="stage-eyebrow">
+              <span class="stage-num">03</span>
+              <span>Primitivas Fundamentais</span>
+            </div>
+
+            <h2 class="stage-title">4 Operadores.<br>Grafo Infinito.</h2>
+
+            <p class="crawl-text" id="crawl-primitives" data-crawl="true">
+              Apenas <b class="highlight">quatro símbolos ortogonais</b> combinados recursivamente modelam 100% dos fluxos distribuídos modernos. Da <b class="highlight-cyan">sequência causal</b> ao <b class="highlight-emerald">paralelismo atômico</b>, canais de <b class="highlight-rose">rollback Saga</b> e <b class="highlight">governança humana</b> auditável.
+            </p>
+
+            <div class="pinbar">
+              <div class="pinbar-fill" id="pinbar-primitives"></div>
+            </div>
+
+            <a href="#sintese" class="stage-action">
+              <span>Ver Síntese Completa do Sistema</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+
+          <!-- Right: 4 Primitives Cards -->
+          <div class="primitives-grid">
+            <!-- 1. Sequence -->
+            <div class="primitive-card active" id="prim-card-1">
+              <div class="primitive-card-header">
+                <span class="primitive-badge badge-sequence">:--:</span>
+                <span class="primitive-formal-name">Causal Pipeline</span>
+              </div>
+              <h4>Sequência Causal</h4>
+              <p>Conecta a saída do nó anterior à entrada estrita do próximo com typechecking em tempo de compilação.</p>
+              <div class="primitive-snippet">Entrada :--: Validar :--: Processar</div>
+            </div>
+
+            <!-- 2. Saga Rollback -->
+            <div class="primitive-card" id="prim-card-2">
+              <div class="primitive-card-header">
+                <span class="primitive-badge badge-saga">!-></span>
+                <span class="primitive-formal-name">Saga Compensator</span>
+              </div>
+              <h4>Canal de Erro / Rollback</h4>
+              <p>Desvia o fluxo em caso de falha para um compensador imediato, revertendo mutações contábeis ou de estado.</p>
+              <div class="primitive-snippet">DebitarSaldo !-> EstornarLancamento</div>
+            </div>
+
+            <!-- 3. Fork-Join -->
+            <div class="primitive-card" id="prim-card-3">
+              <div class="primitive-card-header">
+                <span class="primitive-badge badge-parallel">[...]</span>
+                <span class="primitive-formal-name">Fork-Join Barrier</span>
+              </div>
+              <h4>Paralelismo Concorrente</h4>
+              <p>Bifurca o fluxo em threads nativas simultâneas e consolida os resultados em uma barreira atômica de junção.</p>
+              <div class="primitive-snippet">[ChecarEstoque, AuditarFiscal]</div>
+            </div>
+
+            <!-- 4. HITL -->
+            <div class="primitive-card" id="prim-card-4">
+              <div class="primitive-card-header">
+                <span class="primitive-badge badge-hitl">[?...]</span>
+                <span class="primitive-formal-name">Human Gate</span>
+              </div>
+              <h4>Ponto de Decisão Humana</h4>
+              <p>Congela a transação em gravidade zero, gera token criptográfico seguro e aguarda autorização humana explícita.</p>
+              <div class="primitive-snippet">[?AutorizacaoDiretoria]</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================== -->
+    <!-- SECTION 05: 04 — THE CLIMAX ARCHITECTURE SYNTHESIS (VOID BLACK - TALL) -->
+    <!-- ====================================================================== -->
+    <section class="staged-section height-tall theme-void-black" id="sintese" data-staged="true">
+      <div class="staged-sticky">
+        <div class="stage-glow glow-gold" style="top: 0; left: 20vw;" aria-hidden="true"></div>
+
+        <div class="synthesis-container">
+          <div class="synthesis-header">
+            <div class="synthesis-badge-row">
+              <span class="synthesis-stage-pill" id="pill-step-1">1. Topologia Complexa</span>
+              <span class="synthesis-stage-pill" id="pill-step-2">2. Mapeamento Topológico</span>
+              <span class="synthesis-stage-pill" id="pill-step-3">3. Notação 2flow Sintetizada</span>
+            </div>
+            <h2 class="synthesis-stage-title" id="synthesis-title-text">
+              Do Grafo Distribuído à Notação 2flow
+            </h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-top: 6px;">
+              Role a página para acompanhar a síntese do sistema completo em uma linha declarativa.
+            </p>
+          </div>
+
+          <!-- Viewport containing SVG Diagram & Morphing DSL Layer -->
+          <div class="synthesis-viewport" id="synthesis-viewport">
+            
+            <!-- LAYER 1: The Sprawling Multi-Agent Architecture SVG -->
+            <div class="synthesis-diagram-layer" id="synthesis-diagram">
+              <svg class="synthesis-svg" viewBox="0 0 1000 380" fill="none" role="img" aria-label="Diagrama do sistema empresarial distribuído">
+                <!-- Node 1: RequisitarServidores (Ingestion) -->
+                <g id="node-req" class="node-group">
+                  <rect class="node-box" x="20" y="140" width="160" height="60" rx="8" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" fill="#090d16"></rect>
+                  <text x="35" y="175" fill="#fff" font-size="11" font-family="'JetBrains Mono', monospace" font-weight="600">RequisitarServidores</text>
+                  <circle cx="100" cy="140" r="3" fill="#38BDF8"></circle>
+                </g>
+
+                <!-- Fork Conduits -->
+                <path id="synth-fork-top" class="draw-stroke" d="M180 170 H220 V80 H260" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"></path>
+                <path id="synth-fork-bot" class="draw-stroke" d="M180 170 H220 V260 H260" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"></path>
+
+                <!-- Node 2A: AuditarComplianceFiscal (Parallel 1) -->
+                <g id="node-audit" class="node-group">
+                  <rect class="node-box" x="260" y="50" width="180" height="60" rx="8" stroke="rgba(16,185,129,0.5)" stroke-width="1.2" fill="#090d16"></rect>
+                  <text x="275" y="85" fill="#10B981" font-size="11" font-family="'JetBrains Mono', monospace">AuditarComplianceFiscal</text>
+                </g>
+
+                <!-- Node 2B: VerificarEstoqueFisico (Parallel 2) -->
+                <g id="node-stock" class="node-group">
+                  <rect class="node-box" x="260" y="230" width="180" height="60" rx="8" stroke="rgba(16,185,129,0.5)" stroke-width="1.2" fill="#090d16"></rect>
+                  <text x="280" y="265" fill="#10B981" font-size="11" font-family="'JetBrains Mono', monospace">VerificarEstoqueFisico</text>
+                </g>
+
+                <!-- Join Barrier Conduits -->
+                <path id="synth-join-top" class="draw-stroke" d="M440 80 H470 V170 H500" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"></path>
+                <path id="synth-join-bot" class="draw-stroke" d="M440 260 H470 V170 H500" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"></path>
+
+                <!-- Node 3: DebitarContaBancaria (Saga Trigger) -->
+                <g id="node-debit" class="node-group">
+                  <rect class="node-box" x="500" y="140" width="170" height="60" rx="8" stroke="#FFB100" stroke-width="1.5" fill="#090d16"></rect>
+                  <text x="515" y="175" fill="#FFB100" font-size="11" font-family="'JetBrains Mono', monospace" font-weight="600">DebitarContaBancaria</text>
+                  <circle cx="585" cy="140" r="3" fill="#FFB100"></circle>
+                </g>
+
+                <!-- Saga Rollback Divergence (!->) -->
+                <path id="synth-saga-path" class="draw-stroke" d="M585 200 V290 H640" stroke="#F43F5E" stroke-dasharray="4 4" stroke-width="1.5"></path>
+                <g id="node-rollback" class="node-group">
+                  <rect class="node-box saga-node" x="640" y="260" width="190" height="60" rx="8" stroke="#F43F5E" stroke-width="1.5" fill="#140b10"></rect>
+                  <text x="655" y="285" fill="#F43F5E" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">!-> ROLLBACK SAGA</text>
+                  <text x="655" y="303" fill="#fda4af" font-size="10" font-family="'JetBrains Mono', monospace">CancelarReservaOrcamento</text>
+                </g>
+
+                <!-- Success Path from Debit to HITL -->
+                <path id="synth-hitl-conduit" class="draw-stroke" d="M670 170 H710" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"></path>
+
+                <!-- Node 4: [?AutorizacaoDiretorFinanceiro] (HITL Gate) -->
+                <g id="node-hitl" class="node-group">
+                  <rect class="node-box hitl-node" x="710" y="140" width="180" height="60" rx="8" stroke="#A855F7" stroke-width="1.5" fill="#100b18"></rect>
+                  <text x="720" y="165" fill="#A855F7" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">[? HITL GATE]</text>
+                  <text x="720" y="185" fill="#d8b4fe" font-size="10" font-family="'JetBrains Mono', monospace">?AutorizacaoDiretor</text>
+                </g>
+
+                <!-- Conduit to Invoicing & Dispatch -->
+                <path id="synth-out-conduit" class="draw-stroke" d="M890 170 H920" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"></path>
+
+                <!-- Node 5: EmitirNotaFiscal & Despacho -->
+                <g id="node-final" class="node-group">
+                  <rect class="node-box" x="920" y="140" width="150" height="60" rx="8" stroke="rgba(255,255,255,0.3)" stroke-width="1.2" fill="#090d16"></rect>
+                  <text x="930" y="168" fill="#fff" font-size="10" font-family="'JetBrains Mono', monospace">EmitirNotaFiscal</text>
+                  <text x="930" y="185" fill="#8A8A86" font-size="10" font-family="'JetBrains Mono', monospace">:--: DespacharWMS</text>
+                </g>
+              </svg>
+            </div>
+
+            <!-- LAYER 2: The Collapsed Synthesized 2flow DSL -->
+            <div class="synthesis-dsl-layer" id="synthesis-dsl">
+              <div class="dsl-banner">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                <span>Código Declarativo Gerado (Comptime Validated)</span>
+              </div>
+
+              <div class="dsl-code-display" id="dsl-code-target">
+<span class="tok-fn">RequisitarServidores</span>
+  <span class="tok-seq">:--:</span> <span class="tok-bracket">[</span><span class="tok-fn">AuditarComplianceFiscal</span><span class="tok-comma">,</span> <span class="tok-fn">VerificarEstoqueFisico</span><span class="tok-bracket">]</span>
+  <span class="tok-seq">:--:</span> <span class="tok-fn">DebitarContaBancaria</span> <span class="tok-saga">!-></span> <span class="tok-fn">CancelarReservaOrcamento</span>
+  <span class="tok-seq">:--:</span> <span class="tok-bracket">[</span><span class="tok-hitl">?AutorizacaoDiretorFinanceiro</span><span class="tok-bracket">]</span>
+  <span class="tok-seq">:--:</span> <span class="tok-fn">EmitirNotaFiscal</span>
+  <span class="tok-seq">:--:</span> <span class="tok-fn">DespacharLogisticaWMS</span>
+              </div>
+
+              <!-- Comptime Telemetry Grid below code -->
+              <div class="comptime-telemetry-box">
+                <div class="comptime-pill">
+                  <span class="cp-title">Zig Comptime AST</span>
+                  <span class="cp-val">✓ Validado (@typeInfo)</span>
+                </div>
+                <div class="comptime-pill">
+                  <span class="cp-title">Runtime Overhead</span>
+                  <span class="cp-val">✓ 0.00 ms (Zero Cost)</span>
+                </div>
+                <div class="comptime-pill">
+                  <span class="cp-title">WASM Client Pre-Flight</span>
+                  <span class="cp-val">✓ 2.7 KB (2FV Pronto)</span>
+                </div>
+                <div class="comptime-pill">
+                  <span class="cp-title">Garantia Saga</span>
+                  <span class="cp-val">✓ LIFO Rollback Ativo</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="pinbar" style="margin-top: 30px;">
+            <div class="pinbar-fill" id="pinbar-synthesis"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================== -->
+    <!-- SECTION 06: 05 — WASM 2FV (STAGED PINNED SCROLL - INVERSE MIDNIGHT)   -->
+    <!-- ====================================================================== -->
+    <section class="staged-section theme-inverse-midnight" id="wasm-2fv" data-staged="true">
+      <div class="staged-sticky">
+        <div class="stage-glow glow-cyan" style="bottom: -20vh; left: -10vw;" aria-hidden="true"></div>
+
+        <div class="staged-grid">
+          <div>
+            <div class="stage-eyebrow">
+              <span class="stage-num">05</span>
+              <span>Two-Factor Validation (2FV)</span>
+            </div>
+
+            <h2 class="stage-title">WASM no Client.<br>Proof no Servidor.</h2>
+
+            <p class="crawl-text" id="crawl-wasm" data-crawl="true">
+              O motor <b class="highlight">2flow.wasm</b> tem apenas <b class="highlight">2.7 KB</b> e valida regras de negócio e integridade no navegador em <b class="highlight-cyan">&lt; 0.05ms</b>. Mais de <b class="highlight-emerald">90% dos payloads inválidos</b> são interceptados antes de gastar rede ou computação em nuvem.
+            </p>
+
+            <div class="pinbar">
+              <div class="pinbar-fill" id="pinbar-wasm"></div>
+            </div>
+
+            <a href="#stores" class="stage-action">
+              <span>Explorar 2flow.Store Local</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+
+          <!-- Right: Two-Factor Architecture Cards -->
+          <div class="twofv-comparison">
+            <div class="twofv-card factor-1">
+              <div class="twofv-header">
+                <span class="twofv-tag">Fator 1 (Browser)</span>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--gold);">2flow.wasm</span>
+              </div>
+              <h4>Client-Side Pre-Flight</h4>
+              <div class="twofv-metric">&lt; 0.05 <span>ms</span></div>
+              <p>O motor roda no navegador do usuário. Valida schemas, tipos, sanidade de dados e restrições causais sem realizar chamadas de rede desnecessárias.</p>
+            </div>
+
+            <div class="twofv-card">
+              <div class="twofv-header">
+                <span class="twofv-tag" style="background: rgba(56,189,248,0.12); color: var(--cyan); border-color: rgba(56,189,248,0.3);">Fator 2 (Cluster)</span>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--cyan);">Agentd Engine</span>
+              </div>
+              <h4>Server-Side Proof</h4>
+              <div class="twofv-metric">100% <span>Autoritativo</span></div>
+              <p>O cluster autoritativo executa a persistência com garantias de convergência, consenso Raft e registro em ledger imutável.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================== -->
+    <!-- SECTION 07: 06 — 2FLOW.STORE (STAGED PINNED SCROLL - OBSIDIAN STORE)   -->
+    <!-- ====================================================================== -->
+    <section class="staged-section theme-obsidian-store" id="stores" data-staged="true">
+      <div class="staged-sticky">
+        <div class="stage-glow glow-purple" style="top: -10vh; right: -10vw;" aria-hidden="true"></div>
+
+        <div class="staged-grid">
+          <div>
+            <div class="stage-eyebrow">
+              <span class="stage-num">06</span>
+              <span>Persistência Especializada</span>
+            </div>
+
+            <h2 class="stage-title">Notação Comum.<br>Stores Contextuais.</h2>
+
+            <p class="crawl-text" id="crawl-stores" data-crawl="true">
+              Nem todo evento tem o mesmo objetivo. Em vez de um banco genérico com flags e exceções, cada categoria de fluxo possui uma <b class="highlight">store local especializada</b>: eventos hiper-atômicos, comportamento do usuário, auto-cura ou provas formais.
+            </p>
+
+            <div class="pinbar">
+              <div class="pinbar-fill" id="pinbar-stores"></div>
+            </div>
+
+            <a href="#playground" class="stage-action">
+              <span>Testar no Playground Interativo</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+
+          <!-- Right: 4 Specialized Stores -->
+          <div class="stores-grid">
+            <div class="store-card">
+              <div class="store-card-name">
+                QuarkBEQ.Store
+                <span class="store-card-badge">Entidade</span>
+              </div>
+              <div class="store-card-desc">Eventos hiper-atômicos por entidade com janela ativa curta e snapshots automáticos.</div>
+              <div class="store-key-format">Chave: entity_id + epoch</div>
+            </div>
+
+            <div class="store-card">
+              <div class="store-card-name">
+                UserBehavior.Store
+                <span class="store-card-badge" style="color: var(--gold); border-color: rgba(255,177,0,0.3);">Offline-First</span>
+              </div>
+              <div class="store-card-desc">Registra ações válidas, inválidas, comandos offline e correção contínua do usuário.</div>
+              <div class="store-key-format">Chave: user_id + context + epoch</div>
+            </div>
+
+            <div class="store-card">
+              <div class="store-card-name">
+                ErrorHealing.Store
+                <span class="store-card-badge" style="color: var(--rose); border-color: rgba(244,63,94,0.3);">Self-Healing</span>
+              </div>
+              <div class="store-card-desc">Carrega contraexemplos, traces, causas-raiz de falha e estratégias de reparação.</div>
+              <div class="store-key-format">Chave: trace_id + counterexample</div>
+            </div>
+
+            <div class="store-card">
+              <div class="store-card-name">
+                Proof.Store
+                <span class="store-card-badge" style="color: var(--purple); border-color: rgba(168,85,247,0.3);">Formal</span>
+              </div>
+              <div class="store-card-desc">Persiste invariantes, evidências matemáticas e verificação estática com Haskell/Prolog.</div>
+              <div class="store-key-format">Chave: lemma_hash + proof_state</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================== -->
+    <!-- SECTION 08: 07 — INTERACTIVE PLAYGROUND (INVERSE BLUEPRINT)            -->
+    <!-- ====================================================================== -->
+    <section class="playground-section theme-inverse-blueprint" id="playground">
+      <div class="playground-wrapper">
+        <div class="playground-top">
+          <div>
+            <div class="stage-eyebrow">
+              <span class="stage-num">07</span>
+              <span>Compilador &amp; Visualizador em Tempo Real</span>
+            </div>
+            <h2 style="font-size: clamp(2rem, 3.5vw, 3rem); font-weight: 700; color: #fff;">Playground 2flow</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-top: 6px;">
+              Edite a DSL ou selecione exemplos reais. O grafo topológico é compilado e renderizado instantaneamente.
+            </p>
+          </div>
+
+          <!-- Presets -->
+          <div class="preset-selector" role="group" aria-label="Exemplos prontos">
+            <button class="preset-btn active" id="btn-preset-empresa" data-preset="empresa">Micro-Empresa Agêntica</button>
+            <button class="preset-btn" id="btn-preset-pipeline" data-preset="pipeline">Data Pipeline Concorrente</button>
+            <button class="preset-btn" id="btn-preset-saga" data-preset="saga">Saga Financeira</button>
+          </div>
+        </div>
+
+        <div class="playground-main-grid">
+          <!-- Left: Code Editor -->
+          <div class="playground-editor-panel">
+            <div class="editor-toolbar">
+              <div class="editor-dots">
+                <span class="editor-dot"></span>
+                <span class="editor-dot"></span>
+                <span class="editor-dot"></span>
+              </div>
+              <span>config.2flow</span>
+              <span style="color: var(--emerald);">Zig Comptime Parser</span>
+            </div>
+
+            <textarea class="editor-textarea" id="dsl-input" spellcheck="false" aria-label="Editor de código 2flow">HomologarFornecedor !-> RejeitarFornecedor
+  :--: DarEntradaEstoque !-> EstornarEstoque
+  :--: [LiquidarContasPagar, RegistrarLancamentoContabil]
+  :--: PublicarCampanhaMarketing
+  :--: ProcessarPedidoVenda !-> CancelarReservaVenda
+  :--: NotificarDespachoCliente</textarea>
+
+            <div class="editor-status-bar">
+              <span id="compiler-status" style="color: var(--emerald); font-family: var(--font-mono);">
+                ● AST Válida: 8 nós | 3 compensadores | 1 fork
+              </span>
+              <button class="btn-simulate" id="btn-run-sim">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                <span>SIMULAR FLUXO</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Right: Visual Topological Graph & Log -->
+          <div class="playground-visual-panel">
+            <div class="visual-canvas-box" id="graph-container">
+              <svg class="visual-svg-canvas" id="interactive-graph-svg" viewBox="0 0 600 320" fill="none">
+                <!-- Dynamically generated nodes and links -->
+              </svg>
+            </div>
+
+            <!-- Simulation Log Console -->
+            <div class="simulation-log" id="sim-log-box" aria-live="polite">
+              <div class="log-entry">
+                <span class="log-time">[00:00.00]</span>
+                <span class="log-ok">2flow runtime pronto. Clique em "SIMULAR FLUXO" para despachar um payload.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================== -->
+    <!-- SECTION 09: 08 — TERMINAL / FOOTER (VOID NOIR)                         -->
+    <!-- ====================================================================== -->
+    <section class="terminal-section theme-void-footer" id="terminal">
+      <div class="stage-eyebrow" style="margin-bottom: 30px;">
+        <span class="stage-num">08</span>
+        <span>Integração &amp; CLI</span>
+      </div>
+
+      <h2 style="font-size: clamp(2rem, 3.8vw, 3.2rem); font-weight: 700; color: #fff; margin-bottom: 20px;">
+        Compilado em Zig. Executado em Qualquer Lugar.
+      </h2>
+      <p style="color: var(--text-muted); font-size: 15px; max-width: 50ch; margin: 0 auto 40px;">
+        Sem dependências externas, sem interpretador em runtime e sem alocações ocultas na heap. Clone o repositório e rode nativamente.
+      </p>
+
+      <!-- Terminal Box -->
+      <div class="terminal-box">
+        <div class="terminal-header">
+          <span>bash // zsh</span>
+          <button class="terminal-copy-btn" id="btn-copy-cmd">COPIAR COMANDOS</button>
+        </div>
+        <div class="terminal-body" id="terminal-content">
+          <div><span class="terminal-prompt">$</span> git clone https://github.com/allascode/2flow.git</div>
+          <div><span class="terminal-prompt">$</span> cd 2flow/repo</div>
+          <div><span class="terminal-prompt">$</span> make test-all <span style="color: var(--text-faint);"># Executa testes unitários e pipelines comptime</span></div>
+          <div><span class="terminal-prompt">$</span> make wasm     <span style="color: var(--text-faint);"># Gera 2flow.wasm (2.7 KB) para validação client-side 2FV</span></div>
+          <div><span class="terminal-prompt">$</span> zig build run_empresa <span class="terminal-cursor"></span></div>
+        </div>
+      </div>
+
+      <!-- Links & Manifesto -->
+      <footer class="site-footer">
+        <div>
+          <span>&copy; 2026 <strong>2FLOW</strong> &mdash; AllasCode Semantic Runtime Systems.</span>
+        </div>
+        <div class="footer-nav">
+          <a href="#hero">Início</a>
+          <a href="#filosofia">Filosofia</a>
+          <a href="#operadores">Operadores</a>
+          <a href="#sintese">Síntese de Arquitetura</a>
+          <a href="#wasm-2fv">2FV WASM</a>
+          <a href="#playground">Playground</a>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
