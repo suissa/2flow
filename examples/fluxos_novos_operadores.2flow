@@ -1,0 +1,165 @@
+# ============================================================================
+# 🌊 2FLOW CANONICAL SPECIFICATION: EXEMPLOS COM OS NOVOS OPERADORES
+# ============================================================================
+# Este arquivo reúne os fluxos canônicos que validam os dois níveis da notação:
+# 1. Nível Topológico (:--:, [...], !->, [?...])
+# 2. Nível de Execução (->, <-, ->>, <<-, Ok<T>, Error<E>)
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 1. FLUXO COMBINADO: AQUISIÇÃO E SUPRIMENTOS (TOPOLOGIA + EXECUÇÃO)
+# ----------------------------------------------------------------------------
+flow PurchaseProducts
+
+# Grafo Topológico Causal
+ProcurementAgent.RegisterPurchase
+  :--: StockAgent.IncreaseStock
+  :--: FinancialAgent.RegisterFinancialEntry
+
+# Fiação de Execução de Baixo Nível (Execution Protocol)
+execution ProcurementAgent.RegisterPurchase
+  -> PurchaseEvidenceReceived
+  ->> RegisterPurchase
+  <<- RegisterPurchase
+
+  Ok<PurchaseRegistered>
+    <- Ok<PurchaseRegistered>
+
+  Error<PurchaseRegistrationError>
+    <- Error<PurchaseRegistrationError>
+
+execution StockAgent.IncreaseStock
+  -> Ok<PurchaseRegistered>
+  ->> IncreaseStock
+  <<- IncreaseStock
+
+  Ok<StockEntryCommitted>
+    <- Ok<StockEntryCommitted>
+
+  Error<StockEntryError>
+    <- Error<StockEntryError>
+
+execution FinancialAgent.RegisterFinancialEntry
+  -> Ok<StockEntryCommitted>
+  ->> RegisterFinancialEntry
+  <<- RegisterFinancialEntry
+
+  Ok<FinancialEntryCommitted>
+    <- Ok<FinancialEntryCommitted>
+
+  Error<FinancialEntryError>
+    <- Error<FinancialEntryError>
+
+
+# ----------------------------------------------------------------------------
+# 2. FLUXO DE ROTEAMENTO DE FALHA E ROLLBACK SAGA COM FIAÇÃO DE EXECUÇÃO
+# ----------------------------------------------------------------------------
+flow FailureRoutingSaga
+
+# Grafo Topológico com Rota de Compensação (!->)
+SalesAgent.ReserveStock !-> StockAgent.ReleaseReservation
+  :--: FinancialAgent.CapturePayment
+
+# Fiação de Execução do Nó com Falha
+execution SalesAgent.ReserveStock
+  -> SaleRequested
+  ->> ReserveStock
+  <<- ReserveStock
+
+  Ok<StockReserved>
+    <- Ok<StockReserved>
+
+  Error<StockReservationError>
+    <- Error<StockReservationError>
+
+# Fiação do Compensador Acionado via !->
+execution StockAgent.ReleaseReservation
+  -> Error<StockReservationError>
+  ->> ReleaseReservation
+  <<- ReleaseReservation
+
+  Ok<ReservationReleased>
+    <- Ok<ReservationReleased>
+
+
+# ----------------------------------------------------------------------------
+# 3. FLUXO PARALELO FORK-JOIN COM DECLARAÇÕES INDEPENDENTES DE EXECUÇÃO
+# ----------------------------------------------------------------------------
+flow ParallelConcurrencyForkJoin
+
+# Grafo Topológico Concorrente
+StockAgent.ReceivePurchase
+  :--: [FinancialAgent.RegisterPayable, AccountingAgent.RegisterEntry]
+  :--: PurchaseAgent.CompletePurchase
+
+# Declaração Independente de Execução dos Ramos Paralelos
+execution FinancialAgent.RegisterPayable
+  -> Ok<StockReceived>
+  ->> RegisterPayable
+  <<- RegisterPayable
+  <- Ok<PayableRegistered>
+  <- Error<PayableRegistrationError>
+
+execution AccountingAgent.RegisterEntry
+  -> Ok<StockReceived>
+  ->> RegisterEntry
+  <<- RegisterEntry
+  <- Ok<AccountingEntryRegistered>
+  <- Error<AccountingEntryError>
+
+execution PurchaseAgent.CompletePurchase
+  -> Ok<PayableRegistered>
+  ->> CompletePurchase
+  <<- CompletePurchase
+  <- Ok<PurchaseCompleted>
+  <- Error<PurchaseCompletionError>
+
+
+# ----------------------------------------------------------------------------
+# 4. FLUXO DE GOVERNANÇA COM GATE HUMANO (HUMAN-IN-THE-LOOP - [?...])
+# ----------------------------------------------------------------------------
+flow GovernanceHITL
+
+RiskAgent.PreparePayment
+  :--: [? ComplianceDirectorApproval]
+  :--: TreasuryAgent.ExecutePayment
+
+execution RiskAgent.PreparePayment
+  -> PaymentIntentReceived
+  ->> PreparePayment
+  <<- PreparePayment
+  <- Ok<PaymentPrepared>
+  <- Error<PaymentRiskRejected>
+
+execution TreasuryAgent.ExecutePayment
+  -> Ok<PaymentApprovedByHuman>
+  ->> ExecutePayment
+  <<- ExecutePayment
+  <- Ok<PaymentExecuted>
+  <- Error<PaymentExecutionFailed>
+
+
+# ----------------------------------------------------------------------------
+# 5. FLUXO MESTRE CORPORATIVO UNIFICADO (TODOS OS 8 OPERADORES EM CONJUNTO)
+# ----------------------------------------------------------------------------
+flow EnterpriseMasterPipeline
+
+RequisitarServidores
+  :--: [AuditarComplianceFiscal, VerificarEstoqueFisico]
+  :--: DebitarContaBancaria !-> CancelarReservaOrcamento
+  :--: [? AutorizacaoDiretorFinanceiro]
+  :--: EmitirNotaFiscal
+  :--: DespacharLogisticaWMS
+
+execution DebitarContaBancaria
+  -> Ok<VerificacoesConcluidas>
+  ->> DebitarConta
+  <<- DebitarConta
+  <- Ok<ContaDebitada>
+  <- Error<SaldoInsuficiente>
+
+execution CancelarReservaOrcamento
+  -> Error<SaldoInsuficiente>
+  ->> EstornarOrcamento
+  <<- EstornarOrcamento
+  <- Ok<OrcamentoRestaurado>

@@ -99,6 +99,67 @@ pub export fn validate_2fv_json(ptr: [*]const u8, len: usize) i32 {
 }
 
 // ============================================================================
+// VALIDADOR PESADO CORPORATIVO (ALLASCODE FINANCIAL & SECURITY 2FV)
+// ============================================================================
+const heavy = @import("heavy_validator.zig");
+
+var last_validation_status: i32 = heavy.Status2FV.SUCCESS;
+var last_failed_stage: u8 = 0;
+var last_error_msg_buf: [256]u8 = undefined;
+var last_error_msg_len: usize = 0;
+
+/// Validador Pesado 2FV de Alta Densidade Computacional (Fator 1)
+/// Executa os 5 estágios (Segurança, Schema, Fiscal Módulo 11, Ledger e Criptografia) no navegador
+pub export fn validate_heavy_2fv(ptr: [*]const u8, len: usize, ref_ts: i64) i32 {
+    if (len == 0) {
+        last_validation_status = heavy.Status2FV.ERR_EMPTY_PAYLOAD;
+        last_failed_stage = 1;
+        const msg = "ERR_EMPTY_PAYLOAD";
+        @memcpy(last_error_msg_buf[0..msg.len], msg);
+        last_error_msg_len = msg.len;
+        return last_validation_status;
+    }
+
+    const payload = ptr[0..len];
+    const res = heavy.HeavyValidationPipeline.validate(payload, ref_ts);
+    last_validation_status = res.status;
+    last_failed_stage = res.failed_stage;
+
+    const msg_len = @min(res.error_message.len, last_error_msg_buf.len);
+    @memcpy(last_error_msg_buf[0..msg_len], res.error_message[0..msg_len]);
+    last_error_msg_len = msg_len;
+
+    return res.status;
+}
+
+pub export fn get_last_error_stage() u8 {
+    return last_failed_stage;
+}
+
+pub export fn get_last_error_message(out_ptr: [*]u8, max_len: usize) usize {
+    const copy_len = @min(last_error_msg_len, max_len);
+    if (copy_len > 0) {
+        @memcpy(out_ptr[0..copy_len], last_error_msg_buf[0..copy_len]);
+    }
+    return copy_len;
+}
+
+pub export fn compute_checksum_2fv(
+    idemp_ptr: [*]const u8,
+    idemp_len: usize,
+    amount_cents: i64,
+    doc_ptr: [*]const u8,
+    doc_len: usize,
+    out_ptr: [*]u8,
+) usize {
+    const idemp = idemp_ptr[0..idemp_len];
+    const doc = doc_ptr[0..doc_len];
+    const chk = heavy.DomainValidator.computeFnv1a32(idemp, amount_cents, doc);
+    @memcpy(out_ptr[0..8], &chk);
+    return 8;
+}
+
+// ============================================================================
 // TESTES DO MÓDULO WASM 2FV
 // ============================================================================
 
@@ -140,3 +201,39 @@ test "2FV WASM: JSON universal validator" {
     const s_xss = validate_2fv_json(json_xss.ptr, json_xss.len);
     try std.testing.expectEqual(Status2FV.ERR_SECURITY_INJECTION, s_xss);
 }
+
+test "2FV WASM: Heavy Validator 5-stage pre-flight" {
+    const idemp = "550e8400-e29b-41d4-a716-446655440000";
+    const doc = "123.456.789-09";
+    const total: i64 = 125000;
+    var chk_buf: [8]u8 = undefined;
+    _ = compute_checksum_2fv(idemp.ptr, idemp.len, total, doc.ptr, doc.len, &chk_buf);
+
+    var valid_buf: [1024]u8 = undefined;
+    const valid_json = try std.fmt.bufPrint(&valid_buf,
+        \\{{
+        \\  "idempotency_key": "{s}",
+        \\  "timestamp": 1709424000,
+        \\  "account_id": "ACC-123",
+        \\  "recipient_document": "{s}",
+        \\  "recipient_email": "finance@empresa.com",
+        \\  "currency": "BRL",
+        \\  "total_amount_cents": 125000,
+        \\  "tax_amount_cents": 5000,
+        \\  "items": [
+        \\    {{ "sku": "A1", "name": "Item A", "quantity": 1, "unit_price_cents": 120000 }}
+        \\  ],
+        \\  "checksum": "{s}",
+        \\  "payload_notes": "Valid"
+        \\}}
+    , .{ idemp, doc, &chk_buf });
+
+    const status_ok = validate_heavy_2fv(valid_json.ptr, valid_json.len, 1709424000);
+    try std.testing.expectEqual(heavy.Status2FV.SUCCESS, status_ok);
+
+    const bad_xss = "{\"data\": \"<script>alert(1)</script>\"}";
+    const status_xss = validate_heavy_2fv(bad_xss.ptr, bad_xss.len, 1709424000);
+    try std.testing.expectEqual(heavy.Status2FV.ERR_XSS_DETECTED, status_xss);
+    try std.testing.expectEqual(@as(u8, 1), get_last_error_stage());
+}
+

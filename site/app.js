@@ -352,6 +352,7 @@ function initInteractivePlayground() {
   const graphSvg = document.getElementById('interactive-graph-svg');
   const simLogBox = document.getElementById('sim-log-box');
   const btnRunSim = document.getElementById('btn-run-sim');
+  const btnRunFail = document.getElementById('btn-run-fail');
 
   const presetBtns = {
     empresa: document.getElementById('btn-preset-empresa'),
@@ -385,6 +386,7 @@ function initInteractivePlayground() {
     const btn = presetBtns[key];
     if (!btn) return;
     btn.addEventListener('click', () => {
+      if (isSimulating) return;
       Object.values(presetBtns).forEach((b) => b?.classList.remove('active'));
       btn.classList.add('active');
       dslInput.value = presets[key];
@@ -395,26 +397,34 @@ function initInteractivePlayground() {
 
   // Live typing event
   dslInput.addEventListener('input', () => {
-    compileAndRenderGraph();
+    if (!isSimulating) {
+      compileAndRenderGraph();
+    }
   });
 
-  // Simulation Runner
+  // Simulation Runners
   btnRunSim.addEventListener('click', () => {
-    runLiveSimulation();
+    runLiveSimulation('success');
   });
+
+  if (btnRunFail) {
+    btnRunFail.addEventListener('click', () => {
+      runLiveSimulation('rollback');
+    });
+  }
 
   // Initial compile
   compileAndRenderGraph();
 
-  /* --- Parse 2flow DSL into linear / branch graph data --- */
+  /* --- Parse 2flow DSL into structured stages, nodes and edges --- */
   function parse2flow(rawDsl) {
     const clean = rawDsl.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-    if (!clean) return { nodes: [], edges: [], stats: { nodes: 0, sagas: 0, forks: 0, hitl: 0 } };
+    if (!clean) return { nodes: [], edges: [], stages: [], stats: { nodes: 0, sagas: 0, forks: 0, hitl: 0 } };
 
-    // Split by main sequence operator :--:
-    const segments = clean.split(':--:').map((s) => s.trim());
+    const segments = clean.split(':--:').map((s) => s.trim()).filter(Boolean);
     const nodes = [];
     const edges = [];
+    const stages = [];
     let sagas = 0;
     let forks = 0;
     let hitl = 0;
@@ -422,7 +432,6 @@ function initInteractivePlayground() {
     let prevNodeIds = [];
 
     segments.forEach((seg, sIdx) => {
-      // Check for Saga Rollback !->
       let mainPart = seg;
       let sagaTarget = null;
       if (seg.includes('!->')) {
@@ -432,49 +441,63 @@ function initInteractivePlayground() {
         sagas++;
       }
 
-      // Check for Fork [A, B] or HITL [?Gate]
+      const stageNodes = [];
+
       if (mainPart.startsWith('[') && mainPart.endsWith(']')) {
         const inside = mainPart.slice(1, -1).trim();
         if (inside.startsWith('?')) {
-          // HITL gate
           hitl++;
           const nodeId = `node_${sIdx}_hitl`;
-          nodes.push({ id: nodeId, label: inside, type: 'hitl' });
+          const nodeObj = { id: nodeId, label: inside, type: 'hitl', sIdx };
+          nodes.push(nodeObj);
+          stageNodes.push(nodeObj);
           prevNodeIds.forEach((pid) => edges.push({ from: pid, to: nodeId, type: 'seq' }));
           prevNodeIds = [nodeId];
         } else {
-          // Parallel Fork-Join
           forks++;
           const branchNames = inside.split(',').map((b) => b.trim());
           const currentForkIds = [];
           branchNames.forEach((bName, bIdx) => {
             const bId = `node_${sIdx}_fork_${bIdx}`;
-            nodes.push({ id: bId, label: bName, type: 'parallel' });
+            const nodeObj = { id: bId, label: bName, type: 'parallel', sIdx, forkIdx: bIdx, forkCount: branchNames.length };
+            nodes.push(nodeObj);
+            stageNodes.push(nodeObj);
             prevNodeIds.forEach((pid) => edges.push({ from: pid, to: bId, type: 'fork' }));
             currentForkIds.push(bId);
           });
           prevNodeIds = currentForkIds;
         }
       } else {
-        // Standard single node
         const nodeId = `node_${sIdx}_main`;
-        nodes.push({ id: nodeId, label: mainPart, type: 'standard' });
+        const nodeObj = { id: nodeId, label: mainPart, type: 'standard', sIdx };
+        nodes.push(nodeObj);
+        stageNodes.push(nodeObj);
         prevNodeIds.forEach((pid) => edges.push({ from: pid, to: nodeId, type: 'seq' }));
         prevNodeIds = [nodeId];
       }
 
-      // If this segment has a saga compensation target
-      if (sagaTarget) {
-        const parentId = prevNodeIds[0];
+      let sagaNodeObj = null;
+      if (sagaTarget && stageNodes.length > 0) {
+        const parentId = stageNodes[0].id;
         const sagaId = `node_${sIdx}_saga`;
-        nodes.push({ id: sagaId, label: `!-> ${sagaTarget}`, type: 'saga' });
+        sagaNodeObj = { id: sagaId, label: `!-> ${sagaTarget}`, type: 'saga', sIdx, parentId: parentId };
+        nodes.push(sagaNodeObj);
         edges.push({ from: parentId, to: sagaId, type: 'saga' });
+        stageNodes[0].sagaNodeId = sagaId;
+        stageNodes[0].sagaTarget = sagaTarget;
       }
+
+      stages.push({
+        sIdx,
+        nodes: stageNodes,
+        sagaNode: sagaNodeObj,
+      });
     });
 
     return {
       nodes,
       edges,
+      stages,
       stats: { nodes: nodes.length, sagas, forks, hitl },
     };
   }
@@ -487,6 +510,17 @@ function initInteractivePlayground() {
     // Update Telemetry Header & Status bar
     compilerStatus.innerHTML = `● AST Válida: <strong>${parsed.nodes.length} nós</strong> | ${parsed.stats.sagas} compensadores | ${parsed.stats.forks} forks | ${parsed.stats.hitl} hitl`;
 
+    // Update Rollback button state
+    if (btnRunFail) {
+      if (parsed.stats.sagas === 0) {
+        btnRunFail.disabled = true;
+        btnRunFail.title = 'Nenhum operador de compensação (!->) nesta AST';
+      } else {
+        btnRunFail.disabled = false;
+        btnRunFail.title = `Simular falha e acionamento do compensador Saga (${parsed.stats.sagas} disponível(is))`;
+      }
+    }
+
     // Render SVG
     renderSvg(parsed);
   }
@@ -495,49 +529,32 @@ function initInteractivePlayground() {
     graphSvg.innerHTML = '';
     const nodeMap = new Map();
 
-    // Auto-layout horizontal columns
-    const columns = [];
-    let curCol = [];
-
-    // Group nodes logically
-    parsed.nodes.forEach((n) => {
-      if (n.type === 'parallel') {
-        curCol.push(n);
-      } else if (n.type === 'saga') {
-        // Sagas attach directly to previous column below
-        if (columns.length > 0) {
-          columns[columns.length - 1].push(n);
-        } else {
-          curCol.push(n);
-        }
-      } else {
-        if (curCol.length > 0) {
-          columns.push(curCol);
-          curCol = [];
-        }
-        columns.push([n]);
-      }
-    });
-    if (curCol.length > 0) columns.push(curCol);
-
-    const colWidth = 140;
-    const svgWidth = Math.max(columns.length * colWidth + 60, 600);
-    const svgHeight = 320;
+    const stages = parsed.stages;
+    const colWidth = 145;
+    const svgWidth = Math.max(stages.length * colWidth + 80, 620);
+    const svgHeight = 330;
     graphSvg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
-    // Compute positions
-    columns.forEach((col, cIdx) => {
-      const x = 30 + cIdx * colWidth;
-      const count = col.length;
-      col.forEach((node, rIdx) => {
-        let y = 140;
-        if (node.type === 'saga') {
-          y = 230;
-        } else if (count > 1) {
-          y = 70 + (rIdx * 120) / (count - 1);
+    // Compute positions for each stage
+    stages.forEach((stage, sIdx) => {
+      const x = 35 + sIdx * colWidth;
+      const count = stage.nodes.length;
+
+      stage.nodes.forEach((node, rIdx) => {
+        let y = 135;
+        if (count === 2) {
+          y = rIdx === 0 ? 70 : 195;
+        } else if (count > 2) {
+          y = 50 + (rIdx * 160) / (count - 1);
         }
         nodeMap.set(node.id, { x, y, node });
       });
+
+      if (stage.sagaNode) {
+        // Place saga node directly below its parent agent with ample spacing
+        const sagaY = 240;
+        nodeMap.set(stage.sagaNode.id, { x, y: sagaY, node: stage.sagaNode });
+      }
     });
 
     // Draw Edges first
@@ -547,27 +564,41 @@ function initInteractivePlayground() {
       if (!fromPos || !toPos) return;
 
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      const x1 = fromPos.x + 90;
-      const y1 = fromPos.y + 20;
-      const x2 = toPos.x;
-      const y2 = toPos.y + 20;
-
-      // Smooth cubic bezier or orthogonal
-      const d = `M ${x1} ${y1} C ${x1 + 30} ${y1}, ${x2 - 30} ${y2}, ${x2} ${y2}`;
-      line.setAttribute('d', d);
-      line.setAttribute('fill', 'none');
+      line.setAttribute('id', `graph-edge-${edge.from}-${edge.to}`);
+      line.setAttribute('data-type', edge.type);
+      line.setAttribute('data-from', edge.from);
+      line.setAttribute('data-to', edge.to);
 
       if (edge.type === 'saga') {
+        // Vertical arc dropping down from parent node to saga node
+        const x1 = fromPos.x + 50;
+        const y1 = fromPos.y + 40;
+        const x2 = toPos.x + 50;
+        const y2 = toPos.y;
+        const d = `M ${x1} ${y1} C ${x1} ${y1 + 25}, ${x2} ${y2 - 25}, ${x2} ${y2}`;
+        line.setAttribute('d', d);
+        line.setAttribute('fill', 'none');
         line.setAttribute('stroke', '#F43F5E');
         line.setAttribute('stroke-width', '1.5');
-        line.setAttribute('stroke-dasharray', '3 3');
-      } else if (edge.type === 'fork') {
-        line.setAttribute('stroke', '#10B981');
-        line.setAttribute('stroke-width', '1.5');
+        line.setAttribute('stroke-dasharray', '4 4');
       } else {
-        line.setAttribute('stroke', 'rgba(255, 255, 255, 0.3)');
-        line.setAttribute('stroke-width', '1.2');
+        const x1 = fromPos.x + 100;
+        const y1 = fromPos.y + 20;
+        const x2 = toPos.x;
+        const y2 = toPos.y + 20;
+        const d = `M ${x1} ${y1} C ${x1 + 25} ${y1}, ${x2 - 25} ${y2}, ${x2} ${y2}`;
+        line.setAttribute('d', d);
+        line.setAttribute('fill', 'none');
+
+        if (edge.type === 'fork') {
+          line.setAttribute('stroke', '#10B981');
+          line.setAttribute('stroke-width', '1.5');
+        } else {
+          line.setAttribute('stroke', 'rgba(255, 255, 255, 0.3)');
+          line.setAttribute('stroke-width', '1.2');
+        }
       }
+
       line.classList.add('graph-edge');
       graphSvg.appendChild(line);
     });
@@ -577,6 +608,7 @@ function initInteractivePlayground() {
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('id', `graph-el-${val.node.id}`);
       g.setAttribute('transform', `translate(${val.x}, ${val.y})`);
+      g.setAttribute('data-type', val.node.type);
 
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('width', '100');
@@ -591,6 +623,20 @@ function initInteractivePlayground() {
         strokeColor = '#F43F5E';
         fillColor = '#190a12';
         textColor = '#fda4af';
+        g.style.cursor = 'pointer';
+
+        // Add tooltip
+        const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        titleEl.textContent = `Clique para simular falha com rollback em ${val.node.label}`;
+        g.appendChild(titleEl);
+
+        // Click on saga node triggers rollback simulation specifically for it
+        g.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          if (!isSimulating) {
+            runLiveSimulation('rollback', val.node.id);
+          }
+        });
       } else if (val.node.type === 'parallel') {
         strokeColor = '#10B981';
         fillColor = '#071610';
@@ -626,50 +672,212 @@ function initInteractivePlayground() {
     });
   }
 
-  /* --- Simulation Execution Flow --- */
+  /* --- Deterministic & Saga-Aware Simulation Flow --- */
   let isSimulating = false;
-  function runLiveSimulation() {
+  let activeTimeouts = [];
+
+  function clearAllSimTimeouts() {
+    activeTimeouts.forEach((t) => clearTimeout(t));
+    activeTimeouts = [];
+  }
+
+  function resetNodeVisual(nodeG, nodeType) {
+    if (!nodeG) return;
+    const rect = nodeG.querySelector('rect');
+    if (!rect) return;
+
+    let strokeColor = 'rgba(255,255,255,0.3)';
+    let fillColor = '#090d16';
+
+    if (nodeType === 'saga') {
+      strokeColor = '#F43F5E';
+      fillColor = '#190a12';
+    } else if (nodeType === 'parallel') {
+      strokeColor = '#10B981';
+      fillColor = '#071610';
+    } else if (nodeType === 'hitl') {
+      strokeColor = '#A855F7';
+      fillColor = '#140b1e';
+    }
+
+    rect.setAttribute('stroke', strokeColor);
+    rect.setAttribute('stroke-width', '1.2');
+    rect.setAttribute('fill', fillColor);
+    rect.style.filter = 'none';
+  }
+
+  function runLiveSimulation(mode = 'success', targetSagaId = null) {
     if (isSimulating) return;
     isSimulating = true;
+
+    clearAllSimTimeouts();
+
     btnRunSim.disabled = true;
-    btnRunSim.style.opacity = '0.5';
+    if (btnRunFail) btnRunFail.disabled = true;
 
     simLogBox.innerHTML = '';
-    addLog('Iniciando simulação determinística de pipeline 2flow...', 'ok');
 
-    const nodes = Array.from(document.querySelectorAll('[id^="graph-el-"]'));
-    let step = 0;
+    const parsed = parse2flow(dslInput.value);
+    const stages = parsed.stages;
 
-    function nextStep() {
-      if (step < nodes.length) {
-        const nodeG = nodes[step];
-        const rect = nodeG.querySelector('rect');
-        const origStroke = rect.getAttribute('stroke');
+    if (stages.length === 0) {
+      addLog('AST vazia. Insira código 2flow para simular.', 'warn');
+      isSimulating = false;
+      btnRunSim.disabled = false;
+      if (btnRunFail && parsed.stats.sagas > 0) btnRunFail.disabled = false;
+      return;
+    }
 
-        // Flash node
-        rect.setAttribute('stroke', '#FFB100');
-        rect.setAttribute('stroke-width', '2.5');
-        rect.style.filter = 'drop-shadow(0 0 10px rgba(255,177,0,0.8))';
-
-        const label = nodeG.querySelector('text')?.textContent || `Nó ${step}`;
-        addLog(`Transição Causal :--: Nó [${label}] processado em <0.02ms (Zero-Alloc)`, 'ok');
-
-        setTimeout(() => {
-          rect.setAttribute('stroke', origStroke);
-          rect.setAttribute('stroke-width', '1.2');
-          rect.style.filter = 'none';
-          step++;
-          nextStep();
-        }, 320);
-      } else {
-        addLog('✓ Pipeline concluído com sucesso. Todos os contratos estáticos de tipo respeitados.', 'ok');
-        isSimulating = false;
-        btnRunSim.disabled = false;
-        btnRunSim.style.opacity = '1';
+    // Determine target fail stage if mode === 'rollback'
+    let failStageIndex = -1;
+    if (mode === 'rollback') {
+      if (targetSagaId) {
+        failStageIndex = stages.findIndex((st) => st.sagaNode && st.sagaNode.id === targetSagaId);
+      }
+      if (failStageIndex === -1) {
+        failStageIndex = stages.findIndex((st) => st.sagaNode != null);
+      }
+      if (failStageIndex === -1) {
+        addLog('Nenhum nó de compensação (!->) configurado neste fluxo. Executando Happy Path.', 'warn');
+        mode = 'success';
       }
     }
 
-    nextStep();
+    if (mode === 'rollback') {
+      const failStage = stages[failStageIndex];
+      const parentLabel = failStage.nodes[0]?.label || 'Agente';
+      addLog(`⚡ Iniciando simulação com FALHA e Rollback Saga no nó [${parentLabel}]...`, 'warn');
+    } else {
+      addLog('▶️ Iniciando simulação determinística do pipeline 2flow (Happy Path)...', 'ok');
+    }
+
+    let stageIdx = 0;
+
+    function stepStage() {
+      // SCENARIO 1: Rollback Failure triggered at this stage
+      if (mode === 'rollback' && stageIdx === failStageIndex) {
+        const stage = stages[stageIdx];
+        const mainNode = stage.nodes[0];
+        const mainNodeG = document.getElementById(`graph-el-${mainNode.id}`);
+        const mainRect = mainNodeG?.querySelector('rect');
+
+        // Step A: Node starts execution
+        if (mainRect) {
+          mainRect.setAttribute('stroke', '#FFB100');
+          mainRect.setAttribute('stroke-width', '2.5');
+          mainRect.style.filter = 'drop-shadow(0 0 10px rgba(255,177,0,0.8))';
+        }
+        addLog(`Transição Causal :--: Executando nó [${mainNode.label}]...`, 'warn');
+
+        const t1 = setTimeout(() => {
+          // Step B: Node FAILS (Red highlight)
+          if (mainRect) {
+            mainRect.setAttribute('stroke', '#F43F5E');
+            mainRect.setAttribute('stroke-width', '2.5');
+            mainRect.setAttribute('fill', '#290b16');
+            mainRect.style.filter = 'drop-shadow(0 0 14px rgba(244,63,94,0.95))';
+          }
+          addLog(`❌ Falha no Agente: [${mainNode.label}] recusou a operação!`, 'saga');
+
+          // Highlight saga dashed arrow
+          const sagaEdgeEl = document.getElementById(`graph-edge-${mainNode.id}-${stage.sagaNode.id}`);
+          if (sagaEdgeEl) {
+            sagaEdgeEl.setAttribute('stroke-width', '3');
+            sagaEdgeEl.style.filter = 'drop-shadow(0 0 10px rgba(244,63,94,0.9))';
+          }
+
+          const t2 = setTimeout(() => {
+            // Step C: Trigger Saga Compensator
+            const sagaNodeG = document.getElementById(`graph-el-${stage.sagaNode.id}`);
+            const sagaRect = sagaNodeG?.querySelector('rect');
+            if (sagaRect) {
+              sagaRect.setAttribute('stroke', '#F43F5E');
+              sagaRect.setAttribute('stroke-width', '2.5');
+              sagaRect.setAttribute('fill', '#3d0c1d');
+              sagaRect.style.filter = 'drop-shadow(0 0 16px rgba(244,63,94,0.95))';
+            }
+            addLog(`🛡️ [Saga Rollback] ACIONANDO compensador: [${stage.sagaNode.label}]`, 'saga');
+            addLog('⚠️ Status da Transação: [EM_ROLLBACK] - Reversão atômica de estado concluída.', 'warn');
+
+            const t3 = setTimeout(() => {
+              // Step D: CRITICAL - ABORT PIPELINE! Do NOT continue to subsequent steps!
+              addLog('🛑 Pipeline abortado com segurança. Nenhuma etapa subsequente foi executada (Zero-Alloc & Zero-Leak).', 'saga');
+
+              const t4 = setTimeout(() => {
+                resetNodeVisual(mainNodeG, mainNode.type);
+                if (sagaEdgeEl) {
+                  sagaEdgeEl.setAttribute('stroke-width', '1.5');
+                  sagaEdgeEl.style.filter = 'none';
+                }
+                resetNodeVisual(sagaNodeG, 'saga');
+
+                isSimulating = false;
+                btnRunSim.disabled = false;
+                if (btnRunFail && parsed.stats.sagas > 0) btnRunFail.disabled = false;
+              }, 1400);
+              activeTimeouts.push(t4);
+            }, 500);
+            activeTimeouts.push(t3);
+          }, 420);
+          activeTimeouts.push(t2);
+        }, 340);
+        activeTimeouts.push(t1);
+
+        // Terminate here: subsequent nodes in the pipeline are NEVER executed!
+        return;
+      }
+
+      // SCENARIO 2: Happy Path Stage Execution
+      if (stageIdx < stages.length) {
+        const stage = stages[stageIdx];
+        const count = stage.nodes.length;
+
+        // Animate all active nodes in this stage (SAGA COMPENSATOR IS EXPLICITLY SKIPPED!)
+        stage.nodes.forEach((node, rIdx) => {
+          const nodeG = document.getElementById(`graph-el-${node.id}`);
+          const rect = nodeG?.querySelector('rect');
+          if (!rect) return;
+
+          if (node.type === 'parallel') {
+            rect.setAttribute('stroke', '#10B981');
+            rect.setAttribute('stroke-width', '2.5');
+            rect.style.filter = 'drop-shadow(0 0 12px rgba(16,185,129,0.85))';
+            if (rIdx === 0) {
+              addLog(`🔀 [Fork Paralelo] Disparando ${count} ramos concorrentes...`, 'ok');
+            }
+            addLog(`  ├─ Ramo [${node.label}] processado em <0.01ms (Zero-Alloc)`, 'ok');
+          } else if (node.type === 'hitl') {
+            rect.setAttribute('stroke', '#A855F7');
+            rect.setAttribute('stroke-width', '2.5');
+            rect.style.filter = 'drop-shadow(0 0 12px rgba(168,85,247,0.85))';
+            addLog(`🛡️ [HITL Gate] Autorização humana concedida para [${node.label}] (Token Cryptographic OK)`, 'purple');
+          } else {
+            rect.setAttribute('stroke', '#FFB100');
+            rect.setAttribute('stroke-width', '2.5');
+            rect.style.filter = 'drop-shadow(0 0 10px rgba(255,177,0,0.8))';
+            addLog(`Transição Causal :--: Nó [${node.label}] processado em <0.02ms (Zero-Alloc)`, 'ok');
+          }
+        });
+
+        const t = setTimeout(() => {
+          stage.nodes.forEach((node) => {
+            const nodeG = document.getElementById(`graph-el-${node.id}`);
+            resetNodeVisual(nodeG, node.type);
+          });
+          stageIdx++;
+          stepStage();
+        }, 360);
+        activeTimeouts.push(t);
+      } else {
+        // Complete successfully
+        addLog('✓ Pipeline concluído com sucesso. Todos os contratos estáticos de tipo respeitados.', 'ok');
+        isSimulating = false;
+        btnRunSim.disabled = false;
+        if (btnRunFail && parsed.stats.sagas > 0) btnRunFail.disabled = false;
+      }
+    }
+
+    stepStage();
   }
 
   function addLog(msg, type = 'ok') {

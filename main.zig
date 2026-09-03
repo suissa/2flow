@@ -1,35 +1,34 @@
 const std = @import("std");
 
 // ============================================================================
-// 1. PALETA DE CORES E TEMA VISUAL TUI (ANSI)
+// 1. DESIGN SYSTEM E CORES ANSI (GLAMOUR THEME)
 // ============================================================================
 pub const Theme = struct {
-    pub const red = "\x1b[38;2;248;113;113m";
-    pub const green = "\x1b[38;2;74;222;128m";
-    pub const yellow = "\x1b[38;2;250;204;21m";
-    pub const blue = "\x1b[38;2;96;165;250m";
-    pub const purple = "\x1b[38;2;192;132;252m";
-    pub const cyan = "\x1b[38;2;56;189;248m";
-    pub const orange = "\x1b[38;2;251;146;60m";
+    pub const reset = "\x1b[0m";
     pub const bold = "\x1b[1m";
     pub const dim = "\x1b[2m";
-    pub const reset = "\x1b[0m";
+    pub const red = "\x1b[38;2;255;95;135m";
+    pub const green = "\x1b[38;2;95;255;175m";
+    pub const yellow = "\x1b[38;2;255;215;95m";
+    pub const blue = "\x1b[38;2;95;175;255m";
+    pub const magenta = "\x1b[38;2;215;95;255m";
+    pub const cyan = "\x1b[38;2;95;255;255m";
     pub const clear_screen = "\x1b[2J\x1b[H";
 };
 
 // ============================================================================
-// 2. MODELOS DE DADOS E CONTRATOS DO PIPELINE DE AGENTES
+// 2. MODELOS DE DADOS E CONTEXTO DE RUNTIME
 // ============================================================================
 pub const EventoTransacional = struct {
     id: u64,
     payload: []const u8,
     valor_eur: f64,
     status: []const u8,
+    human_approved: bool = true,
 };
 
 pub const ContextoRuntime = struct {
     allocator: std.mem.Allocator,
-    executando: bool = true,
     mutex: std.atomic.Mutex = .unlocked,
 
     pub fn init(allocator: std.mem.Allocator) ContextoRuntime {
@@ -41,11 +40,10 @@ pub const ContextoRuntime = struct {
             std.Thread.yield() catch {};
         }
         defer self.mutex.unlock();
-        std.debug.print("  {s}⚡ [2flow Runtime]{s} " ++ fmt ++ "\n", .{ Theme.cyan, Theme.reset } ++ args);
+        std.debug.print("  ⚡ [2flow Runtime] " ++ fmt ++ "\n", args);
     }
 };
 
-// Assinatura padrão para qualquer agente dinâmico instanciado pelo 2flow
 pub const AgenteHandlerFn = *const fn (ctx: *ContextoRuntime, ev: *EventoTransacional) bool;
 
 pub const RegistoAgente = struct {
@@ -54,12 +52,27 @@ pub const RegistoAgente = struct {
 };
 
 // ============================================================================
-// 3. PARSER 2FLOW EM TEMPO DE COMPILAÇÃO (COMPTIME AST)
+// 3. PARSER 2FLOW EM TEMPO DE COMPILAÇÃO (COMPTIME AST: TOPOLOGIA + EXECUÇÃO)
 // ============================================================================
 pub const TipoNoFlow = enum {
     modulo,
     sequencia,
     paralelo,
+    hitl_gate,
+    bloco_execucao,
+};
+
+pub const ExecutionStepKind = enum {
+    ingress_event, // -> Entrada de evento no escopo
+    invoke_owned,  // ->> Invocação de função interna própria
+    receive_owned, // <<- Recepção da chamada pela função
+    egress_ok,     // <- Ok<T> Saída de sucesso
+    egress_error,  // <- Error<E> Saída de erro
+};
+
+pub const ExecutionStep = struct {
+    kind: ExecutionStepKind,
+    target: []const u8,
 };
 
 pub const NoFlowAST = struct {
@@ -67,15 +80,21 @@ pub const NoFlowAST = struct {
     nome: []const u8 = "",
     filhos: []const NoFlowAST = &.{},
     compensador_erro: []const u8 = "", // Suporte a !-> Rollback
+    passos_execucao: []const ExecutionStep = &.{},
 };
 
 const TokenKind = enum {
     identifier,
-    arrow,
-    error_arrow,
-    open_bracket,
-    close_bracket,
-    comma,
+    arrow,         // :--:
+    error_arrow,   // !->
+    open_bracket,  // [
+    close_bracket, // ]
+    open_hitl,     // [?
+    comma,         // ,
+    event_ingress, // ->
+    event_egress,  // <-
+    invoke_owned,  // ->>
+    receive_owned, // <<-
 };
 
 const Token = struct {
@@ -90,8 +109,19 @@ fn tokenize(comptime input: []const u8) []const Token {
         while (i < input.len) {
             const c = input[i];
 
-            if (c == ' ' or c == '\t' or c == '\r' or c == '\n') {
+            if (c == ' ' or c == '\t' or c == '\r' or c == '\n' or c == '#') {
+                if (c == '#') {
+                    while (i < input.len and input[i] != '\n') : (i += 1) {}
+                    continue;
+                }
                 i += 1;
+                continue;
+            }
+
+            // Operador de sequência :--:
+            if (i + 4 <= input.len and std.mem.eql(u8, input[i .. i + 4], ":--:")) {
+                tokens = tokens ++ .{Token{ .kind = .arrow, .text = ":--:" }};
+                i += 4;
                 continue;
             }
 
@@ -102,10 +132,38 @@ fn tokenize(comptime input: []const u8) []const Token {
                 continue;
             }
 
-            // Operador de sequência :--:
-            if (i + 4 <= input.len and std.mem.eql(u8, input[i .. i + 4], ":--:")) {
-                tokens = tokens ++ .{Token{ .kind = .arrow, .text = ":--:" }};
-                i += 4;
+            // Operador ->> (invocar comportamento interno)
+            if (i + 3 <= input.len and std.mem.eql(u8, input[i .. i + 3], "->>")) {
+                tokens = tokens ++ .{Token{ .kind = .invoke_owned, .text = "->>" }};
+                i += 3;
+                continue;
+            }
+
+            // Operador <<- (comportamento recebe invocação)
+            if (i + 3 <= input.len and std.mem.eql(u8, input[i .. i + 3], "<<-")) {
+                tokens = tokens ++ .{Token{ .kind = .receive_owned, .text = "<<-" }};
+                i += 3;
+                continue;
+            }
+
+            // Operador [? (Gate Humano - HITL)
+            if (i + 2 <= input.len and std.mem.eql(u8, input[i .. i + 2], "[?")) {
+                tokens = tokens ++ .{Token{ .kind = .open_hitl, .text = "[?" }};
+                i += 2;
+                continue;
+            }
+
+            // Operador -> (evento entra no escopo)
+            if (i + 2 <= input.len and std.mem.eql(u8, input[i .. i + 2], "->")) {
+                tokens = tokens ++ .{Token{ .kind = .event_ingress, .text = "->" }};
+                i += 2;
+                continue;
+            }
+
+            // Operador <- (evento sai do escopo)
+            if (i + 2 <= input.len and std.mem.eql(u8, input[i .. i + 2], "<-")) {
+                tokens = tokens ++ .{Token{ .kind = .event_egress, .text = "<-" }};
+                i += 2;
                 continue;
             }
 
@@ -125,9 +183,9 @@ fn tokenize(comptime input: []const u8) []const Token {
                 continue;
             }
 
-            if (std.ascii.isAlphanumeric(c) or c == '_') {
+            if (std.ascii.isAlphanumeric(c) or c == '_' or c == '.' or c == '<' or c == '>') {
                 const start = i;
-                while (i < input.len and (std.ascii.isAlphanumeric(input[i]) or input[i] == '_')) {
+                while (i < input.len and (std.ascii.isAlphanumeric(input[i]) or input[i] == '_' or input[i] == '.' or input[i] == '<' or input[i] == '>')) {
                     i += 1;
                 }
                 tokens = tokens ++ .{Token{ .kind = .identifier, .text = input[start..i] }};
@@ -155,7 +213,73 @@ fn parseExpression(comptime tokens: []const Token, comptime start: usize) ParseR
 
             if (tok.kind == .close_bracket or tok.kind == .comma) break;
 
-            if (tok.kind == .identifier) {
+            if (tok.kind == .open_hitl) {
+                idx += 1;
+                if (idx >= tokens.len or tokens[idx].kind != .identifier) {
+                    @compileError("Erro 2flow: Esperado identificador após '[?'");
+                }
+                const gate_name = tokens[idx].text;
+                idx += 1;
+                if (idx >= tokens.len or tokens[idx].kind != .close_bracket) {
+                    @compileError("Erro 2flow: Esperado ']' para fechar o gate '[?'");
+                }
+                idx += 1;
+                seq_nodes = seq_nodes ++ .{NoFlowAST{
+                    .tipo = .hitl_gate,
+                    .nome = gate_name,
+                }};
+            } else if (tok.kind == .identifier and std.mem.eql(u8, tok.text, "execution")) {
+                idx += 1;
+                if (idx >= tokens.len or tokens[idx].kind != .identifier) {
+                    @compileError("Erro 2flow: Esperado identificador de escopo após 'execution'");
+                }
+                const scope_name = tokens[idx].text;
+                idx += 1;
+
+                var steps: []const ExecutionStep = &.{};
+                while (idx < tokens.len) {
+                    const step_tok = tokens[idx];
+                    if (step_tok.kind == .event_ingress) {
+                        idx += 1;
+                        steps = steps ++ .{ExecutionStep{ .kind = .ingress_event, .target = tokens[idx].text }};
+                        idx += 1;
+                    } else if (step_tok.kind == .invoke_owned) {
+                        idx += 1;
+                        steps = steps ++ .{ExecutionStep{ .kind = .invoke_owned, .target = tokens[idx].text }};
+                        idx += 1;
+                    } else if (step_tok.kind == .receive_owned) {
+                        idx += 1;
+                        steps = steps ++ .{ExecutionStep{ .kind = .receive_owned, .target = tokens[idx].text }};
+                        idx += 1;
+                    } else if (step_tok.kind == .event_egress) {
+                        idx += 1;
+                        const target_text = tokens[idx].text;
+                        idx += 1;
+                        if (std.mem.startsWith(u8, target_text, "Error<")) {
+                            steps = steps ++ .{ExecutionStep{ .kind = .egress_error, .target = target_text }};
+                        } else {
+                            steps = steps ++ .{ExecutionStep{ .kind = .egress_ok, .target = target_text }};
+                        }
+                    } else if (step_tok.kind == .arrow or step_tok.kind == .close_bracket) {
+                        break;
+                    } else if (step_tok.kind == .identifier and (std.mem.eql(u8, step_tok.text, "execution") or std.mem.eql(u8, step_tok.text, "flow"))) {
+                        break;
+                    } else {
+                        idx += 1;
+                    }
+                }
+
+                seq_nodes = seq_nodes ++ .{NoFlowAST{
+                    .tipo = .bloco_execucao,
+                    .nome = scope_name,
+                    .passos_execucao = steps,
+                }};
+            } else if (tok.kind == .identifier and std.mem.eql(u8, tok.text, "flow")) {
+                idx += 1;
+                if (idx < tokens.len and tokens[idx].kind == .identifier) {
+                    idx += 1;
+                }
+            } else if (tok.kind == .identifier) {
                 var node = NoFlowAST{ .tipo = .modulo, .nome = tok.text };
                 idx += 1;
 
@@ -318,6 +442,52 @@ pub const TwoFlowOrchestrator = struct {
                 self.ctx.log("✅ Barreira Fork-Join concluída com sucesso.", .{});
                 return true;
             },
+
+            .hitl_gate => {
+                if (!ev.human_approved) {
+                    self.ctx.log("{s}⏸️ [Gate HITL: {s}] Fluxo pausado. Aguardando autorização humana externa (A2UI/Token)...{s}", .{ T.yellow, node.nome, T.reset });
+                    ev.status = "PAUSADO_HITL";
+                    return false;
+                }
+                self.ctx.log("{s}👤 [Gate HITL: {s}] Evidência de aprovação humana verificada com sucesso! Reativando pipeline...{s}", .{ T.green, node.nome, T.reset });
+                return true;
+            },
+
+            .bloco_execucao => {
+                self.ctx.log("{s}⚙️ [Execution 2flow] Executando protocolo interno para o escopo: {s}{s}{s}", .{ T.cyan, T.bold, node.nome, T.reset });
+                var sucesso_funcao = true;
+                for (node.passos_execucao) |step| {
+                    switch (step.kind) {
+                        .ingress_event => {
+                            self.ctx.log("   -> Entrada de evento: {s}{s}{s}", .{ T.dim, step.target, T.reset });
+                        },
+                        .invoke_owned => {
+                            self.ctx.log("   ->> Invocando comportamento interno: {s}{s}{s}", .{ T.bold, step.target, T.reset });
+                            if (self.catalogo.get(step.target)) |handler| {
+                                sucesso_funcao = handler(self.ctx, ev);
+                            } else {
+                                self.ctx.log("{s}🚨 Comportamento '{s}' não registado no catálogo!{s}", .{ T.red, step.target, T.reset });
+                                return false;
+                            }
+                        },
+                        .receive_owned => {
+                            self.ctx.log("   <<- Comportamento '{s}' recebeu invocação do proprietário", .{step.target});
+                        },
+                        .egress_ok => {
+                            if (sucesso_funcao) {
+                                self.ctx.log("   <- {s}Emissão Ok: {s}{s}", .{ T.green, step.target, T.reset });
+                            }
+                        },
+                        .egress_error => {
+                            if (!sucesso_funcao) {
+                                self.ctx.log("   <- {s}Emissão Error: {s}{s}", .{ T.red, step.target, T.reset });
+                                return false;
+                            }
+                        },
+                    }
+                }
+                return sucesso_funcao;
+            },
         }
     }
 };
@@ -333,41 +503,40 @@ fn sleepMs(ms: u64) void {
 
 fn agenteValidarOrdem(ctx: *ContextoRuntime, ev: *EventoTransacional) bool {
     ctx.log("   [AgenteValidar] A analisar dados da ordem: {s} (Montante: {d:.2} EUR)", .{ ev.payload, ev.valor_eur });
-    sleepMs(40);
+    sleepMs(20);
     ev.status = "VALIDADO";
     return true;
 }
 
 fn agenteAuditoriaFiscal(ctx: *ContextoRuntime, ev: *EventoTransacional) bool {
     ctx.log("   [AgenteFiscal] NIF validado com 23% IVA para o evento #{d}", .{ev.id});
-    sleepMs(50);
+    sleepMs(25);
     return true;
 }
 
 fn agenteVerificarEstoque(ctx: *ContextoRuntime, ev: *EventoTransacional) bool {
     ctx.log("   [AgenteEstoque] Stock verificado no armazém central para #{d}", .{ev.id});
-    sleepMs(30);
+    sleepMs(15);
     return true;
 }
 
 fn agenteDebitarConta(ctx: *ContextoRuntime, ev: *EventoTransacional) bool {
     ctx.log("   [AgenteTesouraria] A tentar debitar {d:.2} EUR da conta bancária...", .{ev.valor_eur});
-    sleepMs(60);
-    // Simula sucesso no débito
+    sleepMs(30);
     ev.status = "DEBITADO";
     return true;
 }
 
 fn agenteEstornarConta(ctx: *ContextoRuntime, ev: *EventoTransacional) bool {
     ctx.log("   [AgenteEstorno] SAGA ROLLBACK: Devolvendo fundos à conta e cancelando ordem #{d}.", .{ev.id});
-    sleepMs(50);
+    sleepMs(25);
     ev.status = "ESTORNADO";
     return true;
 }
 
 fn agenteEmitirNota(ctx: *ContextoRuntime, ev: *EventoTransacional) bool {
     ctx.log("   [AgenteFaturacao] Nota fiscal emitida com sucesso para o evento #{d}.", .{ev.id});
-    sleepMs(40);
+    sleepMs(20);
     ev.status = "CONCLUIDO";
     return true;
 }
@@ -386,27 +555,39 @@ pub fn main() !void {
 
     std.debug.print("{s}", .{T.clear_screen});
     std.debug.print("{s}╔═══════════════════════════════════════════════════════════════════════════════════════════════╗{s}\n", .{ T.cyan, T.reset });
-    std.debug.print("{s}║ 🌊 ORQUESTRADOR NATIVO 2FLOW EM ZIG: PARSER COMPTIME, REGISTO DINÂMICO & FLUXO DE DADOS     ║{s}\n", .{ T.bold, T.reset });
+    std.debug.print("{s}║ 🌊 ORQUESTRADOR NATIVO 2FLOW EM ZIG: GRAFO TOPOLÓGICO + PROTOCOLO DE EXECUÇÃO COMPTIME        ║{s}\n", .{ T.bold, T.reset });
     std.debug.print("{s}╚═══════════════════════════════════════════════════════════════════════════════════════════════╝{s}\n\n", .{ T.cyan, T.reset });
 
-    // 1. Definição da nossa notação 2flow combinando Sequência, Fork-Join e Saga (!->)
-    const script_2flow =
+    // 1. Definição do Grafo Topológico Mestre combinando :--:, Fork-Join [...], Saga !-> e HITL Gate [?...]
+    const script_topologico =
         \\AgenteValidarOrdem 
         \\  :--: [AgenteAuditoriaFiscal, AgenteVerificarEstoque] 
         \\  :--: AgenteDebitarConta !-> AgenteEstornarConta 
+        \\  :--: [?AutorizacaoDiretoria]
         \\  :--: AgenteEmitirNota
     ;
 
-    // 2. Análise e parsing 100% em tempo de compilação (comptime)
-    const ast_compilada = comptime parse2Flow(script_2flow);
+    // 2. Definição do Bloco de Execução de Baixo Nível (Execution 2flow: ->, ->>, <<-, <-)
+    const script_execucao =
+        \\execution StockAgent.DecreaseStock
+        \\  -> Ok<SaleResolved>
+        \\  ->> AgenteVerificarEstoque
+        \\  <<- AgenteVerificarEstoque
+        \\  <- Ok<StockExitCommitted>
+        \\  <- Error<StockExitError>
+    ;
 
-    std.debug.print("{s}📋 AST do 2flow gerada com sucesso em Comptime.{s}\n\n", .{ T.bold, T.reset });
+    // 3. Análise e parsing 100% em tempo de compilação (comptime)
+    const ast_topologica = comptime parse2Flow(script_topologico);
+    const ast_execucao = comptime parse2Flow(script_execucao);
 
-    // 3. Inicialização do Orquestrador Runtime
+    std.debug.print("{s}📋 AST Topológica e de Execução geradas com sucesso em Comptime.{s}\n\n", .{ T.bold, T.reset });
+
+    // 4. Inicialização do Orquestrador Runtime
     var orquestrador = TwoFlowOrchestrator.init(&runtime_ctx);
     defer orquestrador.deinit();
 
-    // 4. Registo dos Agentes dinâmicos no catálogo do orquestrador
+    // 5. Registo dos Agentes dinâmicos no catálogo do orquestrador
     try orquestrador.registarAgente("AgenteValidarOrdem", agenteValidarOrdem);
     try orquestrador.registarAgente("AgenteAuditoriaFiscal", agenteAuditoriaFiscal);
     try orquestrador.registarAgente("AgenteVerificarEstoque", agenteVerificarEstoque);
@@ -414,22 +595,27 @@ pub fn main() !void {
     try orquestrador.registarAgente("AgenteEstornarConta", agenteEstornarConta);
     try orquestrador.registarAgente("AgenteEmitirNota", agenteEmitirNota);
 
-    std.debug.print("{s}▶️ A Disparar Evento Transacional pelo Motor 2flow...{s}\n\n", .{ T.bold, T.reset });
+    std.debug.print("{s}▶️ 1. Disparando Grafo Topológico Mestre...{s}\n\n", .{ T.bold, T.reset });
 
     var evento = EventoTransacional{
         .id = 88401,
         .payload = "Compra de 10x Servidores Rack 1U - Datacenter Lisboa",
         .valor_eur = 7850.00,
         .status = "PENDENTE",
+        .human_approved = true, // Simula aprovação humana prévia no Gate HITL
     };
 
-    // 5. Execução do fluxo de dados orquestrado
-    const sucesso = orquestrador.executarFlow(ast_compilada, &evento);
-    _ = sucesso;
+    const sucesso_topo = orquestrador.executarFlow(ast_topologica, &evento);
+    _ = sucesso_topo;
 
-    std.debug.print("\n{s}┌── 🏁 RESULTADO DA ORQUESTRAÇÃO 2FLOW ───────────────────────────────────────────┐{s}\n", .{ T.green, T.reset });
-    std.debug.print("{s}│{s} • ID do Evento         : {s}{d}{s}\n", .{ T.green, T.reset, T.yellow, evento.id, T.reset });
+    std.debug.print("\n{s}▶️ 2. Disparando Protocolo de Execução de Baixo Nível (Execution 2flow)...{s}\n\n", .{ T.bold, T.reset });
+    const sucesso_exec = orquestrador.executarFlow(ast_execucao, &evento);
+    _ = sucesso_exec;
+
+    std.debug.print("\n{s}┌── 🏁 RESULTADO DA ORQUESTRAÇÃO UNIFICADA 2FLOW ─────────────────────────────────┐{s}\n", .{ T.green, T.reset });
+    std.debug.print("{s}│{s} • ID do Evento             : {s}{d}{s}\n", .{ T.green, T.reset, T.yellow, evento.id, T.reset });
     std.debug.print("{s}│{s} • Estado Final da Transação: {s}🟢 {s}{s}\n", .{ T.green, T.reset, T.green, evento.status, T.reset });
-    std.debug.print("{s}│{s} • Orquestração 2flow   : {s}Sucesso com Zero Overhead em Comptime{s}          {s}│{s}\n", .{ T.green, T.reset, T.cyan, T.reset, T.green, T.reset });
+    std.debug.print("{s}│{s} • Operadores Topológicos   : {s}:--:, [...], !->, [?...] (HITL Gate){s}     {s}│{s}\n", .{ T.green, T.reset, T.cyan, T.reset, T.green, T.reset });
+    std.debug.print("{s}│{s} • Operadores de Execução   : {s}->, <-, ->>, <<- (Zero-Cost AST){s}         {s}│{s}\n", .{ T.green, T.reset, T.magenta, T.reset, T.green, T.reset });
     std.debug.print("{s}└──────────────────────────────────────────────────────────────────────────────────┘{s}\n\n", .{ T.green, T.reset });
 }

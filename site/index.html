@@ -630,10 +630,16 @@
               <span id="compiler-status" style="color: var(--emerald); font-family: var(--font-mono);">
                 ● AST Válida: 8 nós | 3 compensadores | 1 fork
               </span>
-              <button class="btn-simulate" id="btn-run-sim">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                <span>SIMULAR FLUXO</span>
-              </button>
+              <div class="sim-actions">
+                <button class="btn-simulate" id="btn-run-sim" title="Simular caminho feliz (Happy Path sem erros)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  <span>SIMULAR SUCESSO</span>
+                </button>
+                <button class="btn-simulate btn-simulate-saga" id="btn-run-fail" title="Simular falha e acionamento de Rollback Saga">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                  <span>SIMULAR ROLLBACK</span>
+                </button>
+              </div>
             </div>
           </div>
 
