@@ -47,26 +47,14 @@ test-wasm:
 test:
 	@echo "🧪 [2flow] Executando testes da topologia central..."
 	$(ZIG) test tests/main.zig
-	@echo "🧪 [2flow] Executando testes dos novos operadores e 10 invariantes..."
-	$(ZIG) test tests/test_novos_operadores.zig
 
-## test-heavy: Executa a bateria de 64 testes de invalidação máxima e casos de quebra
-test-heavy:
-	@echo "🧪 [2flow 2FV] Executando bateria de testes pesados de invalidação..."
-	$(ZIG) test test_heavy_invalidation.zig
-
-## bench-invalidation: Executa o benchmark de custo de CPU e desperdício de validação
-bench-invalidation:
-	@echo "🚀 [2flow 2FV] Rodando benchmark de invalidação (100k ops por cenário)..."
-	$(ZIG) run benchmark_invalidation.zig -O ReleaseFast
-
-## test-e2e: Executa a suíte de testes ponta a ponta com Playwright no navegador
-test-e2e: wasm
-	@echo "🎭 [2flow 2FV] Executando testes E2E com Playwright no navegador..."
-	npx -y @playwright/test test --config=e2e/playwright.config.js
+## test-erp: Valida o MOTOR REAL (main.zig) com um fluxo ERP complexo de ponta a ponta
+test-erp:
+	@echo "🧪 [2flow] Validando o motor real com o fluxo ERP complexo..."
+	$(ZIG) test --dep flow -Mroot=tests/erp_complexo.zig -Mflow=main.zig
 
 ## test-all: Executa TODOS os testes do ecossistema 2flow
-test-all: test-wasm test test-heavy
+test-all: test-wasm test test-erp
 	@echo "🧪 [2flow] Executando testes do Data Pipeline..."
 	cd examples/data-pipeline && $(ZIG) test test_pipeline.zig
 	@echo "🧪 [2flow] Executando testes da Empresa Agêntica..."
@@ -109,6 +97,7 @@ help:
 	@echo "  make wasm-debug        Compila 2flow.wasm com símbolos de debug"
 	@echo "  make test-wasm         Roda os testes do validador 2FV WASM"
 	@echo "  make test              Roda os testes da DSL central 2flow"
+	@echo "  make test-erp          Valida o motor real com um fluxo ERP complexo"
 	@echo "  make test-all          Roda todos os testes do repositório"
 	@echo "  make run-datapipeline  Executa o exemplo Modern Data Pipeline"
 	@echo "  make run-empresa       Executa o exemplo Micro-Empresa Agêntica"

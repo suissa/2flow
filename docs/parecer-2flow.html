@@ -1,0 +1,991 @@
+<title>Parecer Técnico do 2flow</title>
+<meta name="description" content="Revisão externa do motor, do 2FV e da DSL do 2flow.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  :root {
+    --paper:       #edf0f2;
+    --surface:     #f9fafb;
+    --surface-sunk:#e4e9ec;
+    --ink:         #17242b;
+    --ink-soft:    #51616a;
+    --ink-faint:   #7d8b92;
+    --rule:        #ccd4d9;
+    --rule-strong: #aeb9bf;
+    --accent:      #9e2e1b;
+    --accent-tint: #f2ddd7;
+    --structure:   #285966;
+    --structure-tint:#dde9ec;
+    --amber:       #8a5e00;
+    --amber-tint:  #f0e6cf;
+    --ok:          #2f6a4f;
+
+    --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:       #131b20;
+      --surface:     #1b252b;
+      --surface-sunk:#0e161a;
+      --ink:         #e2e9ec;
+      --ink-soft:    #a0b2ba;
+      --ink-faint:   #74868e;
+      --rule:        #31404890;
+      --rule-strong: #435159;
+      --accent:      #e5795f;
+      --accent-tint: #3a201a;
+      --structure:   #6fb0c1;
+      --structure-tint:#17313a;
+      --amber:       #d7a141;
+      --amber-tint:  #33280f;
+      --ok:          #63b98f;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:       #131b20;
+    --surface:     #1b252b;
+    --surface-sunk:#0e161a;
+    --ink:         #e2e9ec;
+    --ink-soft:    #a0b2ba;
+    --ink-faint:   #74868e;
+    --rule:        #31404890;
+    --rule-strong: #435159;
+    --accent:      #e5795f;
+    --accent-tint: #3a201a;
+    --structure:   #6fb0c1;
+    --structure-tint:#17313a;
+    --amber:       #d7a141;
+    --amber-tint:  #33280f;
+    --ok:          #63b98f;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 1.0625rem;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 78rem;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 3.5rem) clamp(1rem, 4vw, 3rem) 4rem;
+  }
+
+  /* ---------- cover sheet ---------- */
+  .cover {
+    border: 1.5px solid var(--rule-strong);
+    background: var(--surface);
+  }
+  .cover-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem 1.5rem;
+    padding: 0.7rem 1.15rem;
+    border-bottom: 1.5px solid var(--rule-strong);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .cover-bar .doc-id { color: var(--accent); font-weight: 700; }
+  .cover-body { padding: clamp(1.4rem, 4vw, 2.6rem) clamp(1.15rem, 4vw, 2.6rem); }
+  .cover-kicker {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--structure);
+    margin: 0 0 0.9rem;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(2rem, 6vw, 3.1rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+  }
+  h1 .mono { font-family: var(--font-mono); font-weight: 700; letter-spacing: -0.03em; }
+  .cover-lead {
+    max-width: 62ch;
+    font-size: 1.08rem;
+    color: var(--ink-soft);
+    margin: 0 0 1.6rem;
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  .meta-grid div {
+    background: var(--surface);
+    padding: 0.7rem 0.85rem;
+  }
+  .meta-grid dt {
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.28rem;
+  }
+  .meta-grid dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .meta-grid dd.pass { color: var(--ok); }
+
+  .oplegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 1.4rem;
+  }
+  .op {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    border: 1px solid var(--rule-strong);
+    padding: 0.32rem 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+  .op b { color: var(--structure); font-weight: 700; }
+  .op span { color: var(--ink-soft); font-size: 0.72rem; }
+  .op.dead b { color: var(--accent); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+
+  /* ---------- layout grid ---------- */
+  .doc-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    margin-top: 2.75rem;
+  }
+  @media (min-width: 1080px) {
+    .doc-grid { grid-template-columns: 13rem minmax(0, 1fr); gap: 3.5rem; }
+  }
+
+  .toc {
+    align-self: start;
+    border-top: 1.5px solid var(--rule-strong);
+    padding-top: 0.85rem;
+  }
+  @media (min-width: 1080px) {
+    .toc { position: sticky; top: 1.75rem; }
+  }
+  .toc h2 {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.7rem;
+  }
+  .toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; }
+  @media (min-width: 1080px) { .toc ol { flex-direction: column; gap: 0.15rem; } }
+  .toc a {
+    display: flex;
+    gap: 0.55rem;
+    text-decoration: none;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    padding: 0.2rem 0;
+    line-height: 1.3;
+  }
+  .toc a:hover { color: var(--accent); }
+  .toc a .n { font-family: var(--font-mono); font-size: 0.72rem; color: var(--structure); padding-top: 0.12em; }
+
+  .body-col { min-width: 0; }
+
+  /* ---------- sections ---------- */
+  .section { scroll-margin-top: 1.5rem; }
+  .section + .section {
+    margin-top: 2.75rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--rule);
+  }
+  .section > h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1.4rem, 3.4vw, 1.85rem);
+    letter-spacing: -0.015em;
+    line-height: 1.12;
+    text-wrap: balance;
+    margin: 0 0 1.1rem;
+  }
+  .section > h2 .sec-n {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--structure);
+    transform: translateY(-0.15em);
+  }
+  .section:target > h2 { color: var(--accent); }
+
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+    margin: 1.9rem 0 0.5rem;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 1rem; max-width: 68ch; }
+  .body-col :where(p, li) { hyphens: auto; }
+  a { color: var(--structure); text-underline-offset: 2px; }
+
+  strong { font-weight: 600; }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--surface-sunk);
+    padding: 0.08em 0.34em;
+    border-radius: 2px;
+    word-break: break-word;
+  }
+
+  ul.plain { margin: 0 0 1rem; padding-left: 1.1rem; max-width: 68ch; }
+  ul.plain li { margin-bottom: 0.5rem; }
+  ul.plain li::marker { color: var(--structure); }
+
+  .callout {
+    border-left: 3px solid var(--structure);
+    background: var(--structure-tint);
+    padding: 1rem 1.15rem;
+    margin: 0 0 1.2rem;
+    max-width: 68ch;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout.verdict { border-left-color: var(--accent); background: var(--accent-tint); }
+
+  /* ---------- findings (§5) ---------- */
+  .finding {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.15rem 1rem;
+    padding: 1.15rem 0 0.2rem;
+    border-top: 1px dashed var(--rule-strong);
+    margin-top: 1.2rem;
+  }
+  @media (min-width: 620px) {
+    .finding { grid-template-columns: 3.2rem 1fr; }
+  }
+  .finding .tag {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: var(--accent);
+    padding-top: 0.15rem;
+  }
+  .finding h3 { margin: 0 0 0.4rem; }
+  .finding p:last-child { margin-bottom: 0.6rem; }
+
+  /* ---------- redline (§6) ---------- */
+  .redline {
+    max-width: 68ch;
+    padding: 0.7rem 0 0.7rem 0.95rem;
+    border-left: 2px solid var(--accent);
+    margin: 0 0 0.95rem;
+  }
+  .redline .claim {
+    color: var(--ink-faint);
+    text-decoration: line-through;
+    text-decoration-color: var(--accent);
+    text-decoration-thickness: 1.5px;
+    font-style: italic;
+  }
+  .redline .truth { display: block; margin-top: 0.2rem; }
+  .redline .truth::before { content: "→ "; color: var(--accent); font-family: var(--font-mono); }
+
+  /* ---------- priorities (§7) ---------- */
+  .prio-group { margin-top: 1.4rem; }
+  .prio-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.65rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.55rem;
+  }
+  .pchip {
+    font-weight: 700;
+    padding: 0.12rem 0.45rem;
+    border: 1px solid currentColor;
+    letter-spacing: 0.08em;
+  }
+  .prio-group.p0 .pchip, .prio-group.p0 .prio-head { color: var(--accent); }
+  .prio-group.p1 .pchip, .prio-group.p1 .prio-head { color: var(--amber); }
+  .prio-group.p2 .pchip, .prio-group.p2 .prio-head { color: var(--structure); }
+  .prio-group ol { margin: 0; padding-left: 1.3rem; max-width: 68ch; }
+  .prio-group li { margin-bottom: 0.45rem; }
+  .prio-group li::marker { font-family: var(--font-mono); font-size: 0.82rem; color: var(--ink-faint); }
+
+  /* ---------- table (§8) ---------- */
+  .table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--rule-strong);
+    margin: 0 0 1.6rem;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 44rem;
+    font-size: 0.86rem;
+  }
+  caption {
+    caption-side: top;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0.7rem 0.85rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  th, td {
+    text-align: left;
+    padding: 0.6rem 0.85rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.8rem;
+    background: var(--surface-sunk);
+    position: sticky;
+    left: auto;
+  }
+  tbody th {
+    font-family: var(--font-body);
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--surface);
+  }
+  tbody tr:first-child th, tbody tr:first-child td { border-top: 1px solid var(--rule-strong); }
+  td.neg { color: var(--accent); }
+  td.pos { color: var(--ok); }
+  .col-2flow { background: var(--structure-tint); }
+  th.col-2flow { background: var(--structure); color: #fff; }
+  :root[data-theme="dark"] th.col-2flow, :root:not([data-theme="light"]) th.col-2flow { color: var(--paper); }
+
+  /* ---------- fit (§9) ---------- */
+  .fit {
+    display: grid;
+    gap: 1px;
+    background: var(--rule-strong);
+    border: 1px solid var(--rule-strong);
+    margin: 0 0 1rem;
+  }
+  @media (min-width: 640px) { .fit { grid-template-columns: 1fr 1fr; } }
+  .fit > div { background: var(--surface); padding: 1.1rem 1.15rem; }
+  .fit h3 { margin: 0 0 0.6rem; display: flex; align-items: center; gap: 0.5rem; }
+  .fit .yes h3 { color: var(--ok); }
+  .fit .no h3 { color: var(--accent); }
+  .fit ul { margin: 0; padding-left: 1.1rem; }
+  .fit li { margin-bottom: 0.4rem; font-size: 0.98rem; }
+
+  /* ---------- scorecard (§10) ---------- */
+  .score { margin: 1.4rem 0 0.5rem; display: grid; gap: 0.7rem; max-width: 40rem; }
+  .score-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.3rem 1rem;
+    align-items: center;
+  }
+  @media (min-width: 560px) {
+    .score-row { grid-template-columns: 15rem 1fr auto; }
+  }
+  .score-label { font-size: 0.96rem; }
+  .score-track {
+    position: relative;
+    height: 0.62rem;
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule);
+    overflow: hidden;
+  }
+  .score-fill { position: absolute; inset: 0 auto 0 0; width: calc(var(--v) * 10%); }
+  .s-low  .score-fill { background: var(--accent); }
+  .s-mid  .score-fill { background: var(--amber); }
+  .s-high .score-fill { background: var(--structure); }
+  .score-num { font-family: var(--font-mono); font-weight: 700; font-size: 0.9rem; }
+  .score-num .mx { color: var(--ink-faint); font-weight: 400; }
+  .s-low .score-num { color: var(--accent); }
+  .s-mid .score-num { color: var(--amber); }
+  .s-high .score-num { color: var(--structure); }
+
+  footer {
+    margin-top: 3.5rem;
+    padding-top: 1.1rem;
+    border-top: 1.5px solid var(--rule-strong);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    color: var(--ink-faint);
+    line-height: 1.7;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  a:focus-visible, .toc a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="cover">
+    <div class="cover-bar">
+      <span class="doc-id">Parecer&nbsp;/&nbsp;2flow&nbsp;v0.x</span>
+      <span>Claude Sonnet&nbsp;5 · via Claude Code</span>
+      <span>2026-09-03</span>
+    </div>
+    <div class="cover-body">
+      <p class="cover-kicker">Avaliação Técnica Independente</p>
+      <h1>Parecer técnico do <span class="mono">2flow</span></h1>
+      <p class="cover-lead">
+        Leitura externa e sem filtro do motor, do 2FV e da DSL. O objetivo é ser útil, não
+        gentil: o que foi bem construído, o que é protótipo, e onde a documentação promete
+        além do que o código entrega.
+      </p>
+
+      <dl class="meta-grid">
+        <div><dt>Base</dt><dd>worktree<br>claude/init-89cd8b</dd></div>
+        <div><dt>Toolchain</dt><dd>Zig 0.16.0</dd></div>
+        <div><dt>Suíte</dt><dd class="pass">29 / 29 ok</dd></div>
+        <div><dt>Alvo WASM</dt><dd>wasm32-<br>freestanding</dd></div>
+        <div><dt>Validação</dt><dd>fluxo ERP<br>19 agentes</dd></div>
+      </dl>
+
+      <div class="oplegend" aria-label="Operadores da notação">
+        <span class="op"><b>:--:</b><span>sequência causal</span></span>
+        <span class="op"><b>!-&gt;</b><span>compensador de saga</span></span>
+        <span class="op"><b>[ … ]</b><span>fork-join concorrente</span></span>
+        <span class="op dead"><b>[? … ]</b><span>gate humano — não implementado</span></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="doc-grid">
+    <nav class="toc" aria-label="Índice">
+      <h2>Seções</h2>
+      <ol>
+        <li><a href="#s1"><span class="n">§1</span> Método</a></li>
+        <li><a href="#s2"><span class="n">§2</span> Resumo executivo</a></li>
+        <li><a href="#s3"><span class="n">§3</span> A ideia central</a></li>
+        <li><a href="#s4"><span class="n">§4</span> Pontos fortes</a></li>
+        <li><a href="#s5"><span class="n">§5</span> Pontos fracos técnicos</a></li>
+        <li><a href="#s6"><span class="n">§6</span> Documentação × implementação</a></li>
+        <li><a href="#s7"><span class="n">§7</span> Melhorias priorizadas</a></li>
+        <li><a href="#s8"><span class="n">§8</span> Comparação com frameworks</a></li>
+        <li><a href="#s9"><span class="n">§9</span> Onde o 2flow se encaixa</a></li>
+        <li><a href="#s10"><span class="n">§10</span> Veredito</a></li>
+      </ol>
+    </nav>
+
+    <main class="body-col">
+
+      <section class="section" id="s1">
+        <h2><span class="sec-n">§1</span> Método</h2>
+        <p>O que foi lido e executado:</p>
+        <ul class="plain">
+          <li><strong>Motor central:</strong> <code>main.zig</code>, <code>wasm.zig</code>, <code>tests/main.zig</code>.</li>
+          <li><strong>Exemplos:</strong> <code>data-pipeline/</code> e <code>empresa-agentica/</code> — incluindo <code>tools.zig</code>, <code>config.2flow</code> e testes.</li>
+          <li><strong>DSL:</strong> o parser comptime, replicado em quatro arquivos.</li>
+          <li><strong>Docs:</strong> <code>README.md</code>, <code>docs/2FV-…​.md</code>, <code>docs/prompts/01-critica-notebooklm.md</code>.</li>
+          <li><strong>Site:</strong> <code>index.html</code> da raiz e <code>site/</code>.</li>
+        </ul>
+        <p>
+          <strong>Validação prática:</strong> escrevi <code>tests/erp_complexo.zig</code>, que
+          exercita o <em>motor real</em> (<code>main.zig</code> importado como módulo, sem cópia)
+          com um fluxo de 19 agentes — Order-to-Cash + Procure-to-Pay + Logística —, cinco
+          fork-joins (um aninhado) e cinco sagas (duas dentro de ramos paralelos). Cenários:
+          caminho feliz, rollback de saga com abort do downstream, quebra de barreira fork-join
+          e compensador declarado dentro de um ramo paralelo.
+        </p>
+        <div class="callout">
+          <p>
+            <strong>Resultado:</strong> 29/29 testes do repositório passam no Zig 0.16.0 e o
+            <code>2flow.wasm</code> compila para <code>wasm32-freestanding</code>. O motor
+            <strong>faz o que promete fazer</strong> nos três operadores implementados.
+          </p>
+        </div>
+        <p>
+          <strong>Não avaliado:</strong> trabalho em progresso que existe apenas no worktree
+          principal (<code>heavy_validator.zig</code>, <code>benchmark_invalidation.zig</code>,
+          <code>test_heavy_invalidation.zig</code>, <code>e2e/</code>). Algumas críticas abaixo
+          podem já estar sendo endereçadas lá.
+        </p>
+      </section>
+
+      <section class="section" id="s2">
+        <h2><span class="sec-n">§2</span> Resumo executivo</h2>
+        <p>
+          <strong>A ideia central é boa e a implementação-núcleo é competente.</strong> Compilar
+          uma topologia de fluxo para uma AST em <code>comptime</code> e monomorfizá-la num
+          orquestrador nativo é um uso legítimo e elegante do Zig — não é truque de marketing:
+          o parser realmente some do binário e as chamadas realmente viram código direto.
+        </p>
+        <p>
+          <strong>A engenharia ao redor é de protótipo.</strong> Parser copiado em quatro
+          arquivos, sem <code>build.zig</code>, corridas de dados no fork-join, zero
+          durabilidade, sem cancelamento nem timeout.
+        </p>
+        <p>
+          <strong>A documentação promete três coisas que o código não entrega:</strong> o
+          operador de gate humano <code>[?…]</code>, a checagem de tipos entre nós em comptime,
+          e “transações distribuídas”. Nenhuma existe. Esse desalinhamento é o problema mais
+          sério do projeto hoje — mais do que qualquer bug — porque mina a credibilidade do que
+          de fato foi construído.
+        </p>
+        <div class="callout verdict">
+          <p>
+            <strong>Recomendação de uma linha:</strong> consolide o motor num módulo único com
+            <code>build.zig</code>, alinhe a documentação com a realidade (implemente
+            <code>[?…]</code> ou remova-o), e escolha um modelo de concorrência de verdade.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="s3">
+        <h2><span class="sec-n">§3</span> A ideia central, e por que ela merece atenção</h2>
+        <p>
+          O pitch do “guardanapo” — <em>se você desenha o fluxo, você escreve o fluxo</em> — é
+          real aqui. Três propriedades que quase nenhum orquestrador de workflow tem juntas:
+        </p>
+        <ul class="plain">
+          <li>
+            <strong>Parsing com custo zero em runtime.</strong> <code>tokenize</code> +
+            <code>parseExpression</code> rodam em <code>comptime</code>. O binário final não
+            carrega tokenizer, string da DSL nem árvore de decisão — recebe uma
+            <code>NoFlowAST</code> já resolvida.
+          </li>
+          <li>
+            <strong>Orquestração monomorfizada.</strong> <code>executarFlow</code> recebe
+            <code>comptime node</code> e faz <code>inline for</code> sobre os filhos. Cada nó
+            <code>.modulo</code> vira lookup + chamada direta; a estrutura do fluxo é desdobrada
+            em uma função. Isso é <em>zero-cost abstraction</em> no sentido estrito.
+          </li>
+          <li>
+            <strong>Compensação visível na notação.</strong> O <code>!-&gt;</code> põe o rollback
+            da saga <em>no desenho do fluxo</em>, não escondido num <code>catch</code> três
+            camadas abaixo. É a decisão de DX mais defensável da linguagem.
+          </li>
+        </ul>
+        <p>
+          O <strong>2FV</strong> é a segunda boa ideia, e independente da primeira: compilar o
+          motor de validação do backend para WASM e rodá-lo no cliente como pre-flight,
+          eliminando drift de regras e requisições desperdiçadas. Tem valor sozinho, sem nenhum
+          framing de “agentes”.
+        </p>
+      </section>
+
+      <section class="section" id="s4">
+        <h2><span class="sec-n">§4</span> Pontos fortes</h2>
+        <div class="table-scroll">
+          <table>
+            <caption>Oito coisas que o projeto acerta</caption>
+            <thead>
+              <tr><th scope="col">#</th><th scope="col">Ponto</th><th scope="col">Evidência</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">1</th><td>Conceito comptime bem executado</td><td><code>parse2Flow</code> + <code>executarFlow</code> monomorfizado</td></tr>
+              <tr><th scope="row">2</th><td><code>!-&gt;</code> torna saga/compensação legível</td><td><code>config.2flow</code> dos dois exemplos</td></tr>
+              <tr><th scope="row">3</th><td>2FV: mesma lógica no cliente e no servidor</td><td><code>wasm.zig</code> reusa <code>examples/*/tools.zig</code></td></tr>
+              <tr><th scope="row">4</th><td>Superfície pequena, sem árvore de dependências</td><td>~500 linhas de motor, só <code>std</code></td></tr>
+              <tr><th scope="row">5</th><td>Testes existem e são significativos</td><td>cada operador tem teste; exemplos com 8 e 9 testes</td></tr>
+              <tr><th scope="row">6</th><td>Exemplos concretos e não-triviais</td><td>pipeline LGPD/sentimento; ciclo de micro-empresa completo</td></tr>
+              <tr><th scope="row">7</th><td>AST limpa e fácil de estender</td><td><code>NoFlowAST</code>: 4 campos, <code>enum</code> de 3 variantes</td></tr>
+              <tr><th scope="row">8</th><td><code>@embedFile</code> para <code>.2flow</code> externo</td><td>trocar topologia sem tocar em código</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section" id="s5">
+        <h2><span class="sec-n">§5</span> Pontos fracos (técnicos)</h2>
+
+        <div class="finding">
+          <div class="tag">5.1</div>
+          <div>
+            <h3>O parser está copiado em quatro arquivos</h3>
+            <p>
+              <code>tokenize</code>/<code>parseExpression</code>/<code>parse2Flow</code> e o
+              orquestrador aparecem, quase idênticos, em <code>main.zig</code>,
+              <code>tests/main.zig</code> e nos dois <code>examples/*/main.zig</code>. Qualquer
+              mudança de semântica precisa ser replicada quatro vezes, e os testes de
+              <code>tests/main.zig</code> validam uma <em>cópia</em>. A causa
+              (<code>@import("../main.zig")</code> cruza a fronteira de módulo) some com um
+              <code>build.zig</code> + <code>b.addModule</code>.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <div class="tag">5.2</div>
+          <div>
+            <h3>Não há <code>build.zig</code></h3>
+            <p>
+              Tudo é <code>zig test arquivo.zig</code> avulso, coordenado por um
+              <code>Makefile</code> que nem roda na máquina de dev. Um projeto Zig sério tem
+              <code>build.zig</code> com módulo do motor, step de testes agregado, o alvo WASM
+              como artefato, e <code>zig build test</code>. Isso também elimina 5.1.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <div class="tag">5.3</div>
+          <div>
+            <h3>O parser comptime não escala</h3>
+            <p>
+              <code>tokenize</code> faz <code>tokens = tokens ++ .{…}</code> dentro do loop —
+              cada <code>++</code> realoca o array inteiro, então é <strong>O(n²)</strong> em
+              comptime. Combinado com a cota padrão de 1000 <em>backward branches</em>, qualquer
+              fluxo com mais de ~10 nós <strong>falha ao compilar</strong> até o chamador
+              adicionar <code>@setEvalBranchQuota(…)</code> — coisa que nenhum call-site do repo
+              faz. O <code>tests/erp_complexo.zig</code> só compila porque eu chamo
+              <code>@setEvalBranchQuota(500_000)</code> antes do parse.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <div class="tag">5.4</div>
+          <div>
+            <h3>Concorrência insegura no fork-join</h3>
+            <ul class="plain">
+              <li>
+                <strong>Corrida de dados no <code>*Event</code>.</strong> Todos os ramos recebem
+                o mesmo ponteiro e os handlers escrevem campos sem sincronização. Só
+                <code>registrarPasso</code> tem mutex — e o <code>EventoTransacional</code> de
+                <code>main.zig</code> nem isso.
+              </li>
+              <li>
+                <strong>Uso de pilha após retorno.</strong> Se <code>std.Thread.spawn</code>
+                falha, o código faz <code>return false</code> <em>sem dar join</em> nas threads
+                já criadas; elas continuam escrevendo em <code>&amp;resultados[i]</code>, pilha
+                da função que está retornando.
+              </li>
+              <li>
+                <strong><code>threads.append(...) catch {}</code></strong> engole falha de
+                alocação; a thread nunca recebe join.
+              </li>
+              <li>
+                Uma thread de SO por ramo, <strong>incondicionalmente</strong>, sem pool. E
+                <strong>sem timeout nem cancelamento</strong> — um ramo travado trava o join
+                para sempre.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="finding">
+          <div class="tag">5.5</div>
+          <div>
+            <h3>O retorno do agente é <code>bool</code> — sem causa de erro</h3>
+            <p>
+              Quando um nó falha, o compensador recebe o mesmo <code>*Event</code> mas
+              <strong>nenhum erro estruturado</strong> — não sabe <em>por que</em> falhou. Sagas
+              reais precisam da causa (estornar por timeout ≠ estornar por saldo insuficiente).
+              <code>fn(…) FlowError!void</code> seria o encaixe natural e daria o “canal de erro
+              tipado” que o <code>!-&gt;</code> só finge ter.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <div class="tag">5.6</div>
+          <div>
+            <h3>Registro de agentes é <em>stringly-typed</em> e manual</h3>
+            <p>
+              Você escreve o fluxo com nomes e, separadamente, chama
+              <code>registarAgente("Nome", fn)</code>. Um erro de digitação vira
+              <code>orelse return false</code> em runtime, não erro de compilação — apesar de o
+              conjunto de nomes exigidos ser conhecível em comptime.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <div class="tag">5.7</div>
+          <div>
+            <h3>Fragilidades pontuais do orquestrador</h3>
+            <ul class="plain">
+              <li><code>ev.status = "EM_ROLLBACK"</code> é sobrescrito por qualquer compensador que escreva em <code>status</code> (descoberto ao escrever os testes do ERP).</li>
+              <li><code>resultados: [N]bool = @splat(true)</code>: um ramo que sequer foi disparado pode contar como sucesso.</li>
+              <li>Sem observabilidade além de <code>std.debug.print</code> com ANSI: sem trace estruturado, duração por nó ou métricas.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="finding">
+          <div class="tag">5.8</div>
+          <div>
+            <h3>Tensão de design: desdobrar tudo × tamanho do binário</h3>
+            <p>
+              <code>executarFlow</code> com <code>inline for</code> desdobra o fluxo
+              <em>inteiro</em> numa função. Para 100 nós, isso é muito código gerado e comptime
+              que explode. Um híbrido — AST em comptime, interpretador em runtime caminhando por
+              ela — escalaria melhor e continuaria rápido. Vale medir antes de assumir que
+              “zero-cost por desdobramento” é a escolha certa em escala.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="s6">
+        <h2><span class="sec-n">§6</span> Documentação × implementação — o maior problema</h2>
+        <p>
+          O <code>docs/prompts/01-critica-notebooklm.md</code> já contém uma crítica editorial
+          correta (teoria repetida, tom oscilando entre negócio e compilador, exemplos
+          <code>A :--: B</code> em vez de um caso real). Não vou repetir. O que importa mais:
+        </p>
+
+        <h3>6.1&nbsp;&nbsp;<code>[?…]</code> (gate humano) não existe</h3>
+        <div class="redline">
+          <span class="claim">“Um dos quatro operadores fundamentais da linguagem.”</span>
+          <span class="truth">o tokenizer rejeita <code>?</code> — só aceita <code>[A-Za-z0-9_]</code>, então <code>[?Aprovacao]</code> dá <code>@compileError("Caractere inválido")</code>.</span>
+        </div>
+
+        <h3>6.2&nbsp;&nbsp;“Os tipos conversam em comptime”</h3>
+        <div class="redline">
+          <span class="claim">“OutputType(AgenteA) ≡ InputType(AgenteB), verificado em comptime, com erros pedagógicos antes do binário.”</span>
+          <span class="truth">não há checagem de tipos. Todo agente é <code>fn(ctx: *ContextoRuntime, ev: *EventoTransacional) bool</code>. Não existe tipo numa aresta — existe um <code>Event</code> mutável único que cada agente lê e escreve à vontade.</span>
+        </div>
+
+        <h3>6.3&nbsp;&nbsp;“Transações distribuídas” / “microsserviços” / NATS / QUIC</h3>
+        <div class="redline">
+          <span class="claim">“Coordenação de múltiplos microsserviços ou nós distribuídos; supervisão estilo Erlang/OTP; o servidor não cai na Black Friday.”</span>
+          <span class="truth">a implementação é um processo, em memória, chamadas de função sobre threads. Escopo respeitável — mas vender o que não existe faz o leitor técnico descontar o que existe.</span>
+        </div>
+
+        <div class="callout">
+          <p>
+            <strong>Recomendação:</strong> separe em <code>VISION.md</code> (filosofia, para onde
+            vai — pode sonhar) e <code>SPEC.md</code> (o que a v0.x faz hoje, com tabela
+            <em>Implementado / Planejado / Não planejado</em>, cada afirmação verificável contra
+            um teste).
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="s7">
+        <h2><span class="sec-n">§7</span> Melhorias recomendadas (priorizadas)</h2>
+
+        <div class="prio-group p0">
+          <div class="prio-head"><span class="pchip">P0</span> credibilidade e fundação</div>
+          <ol>
+            <li><code>build.zig</code> com módulo único do motor; deletar as três cópias do parser.</li>
+            <li>Alinhar a documentação: tabela de status dos operadores; remover ou implementar <code>[?…]</code>; retirar as alegações de tipagem-entre-nós e de “distribuído” até serem verdade.</li>
+            <li><code>@setEvalBranchQuota</code> dentro de <code>parse2Flow</code> + pré-alocação de tokens. Sem isso, ninguém usa em um fluxo do tamanho de um ERP real.</li>
+          </ol>
+        </div>
+
+        <div class="prio-group p1">
+          <div class="prio-head"><span class="pchip">P1</span> correção</div>
+          <ol start="4">
+            <li>Isolar estado por ramo no fork-join (cópia-por-ramo + merge determinístico na barreira, estilo <em>reducer</em> do LangGraph) ou documentar a restrição.</li>
+            <li>Corrigir o caminho de falha do <code>spawn</code>: dar join em tudo já disparado antes de retornar; não engolir o <code>catch</code> do <code>append</code>.</li>
+            <li><code>FlowError!void</code> em vez de <code>bool</code> — canal de erro tipado de verdade.</li>
+            <li>Verificar em comptime que todo nome do fluxo tem agente registrado.</li>
+          </ol>
+        </div>
+
+        <div class="prio-group p2">
+          <div class="prio-head"><span class="pchip">P2</span> maturidade</div>
+          <ol start="8">
+            <li>Timeout e cancelamento por nó e por fork; pool de threads.</li>
+            <li>Trace estruturado (duração, status, causa por nó) — pré-requisito para uso sério.</li>
+            <li>Persistência opcional de checkpoint para o gate humano fazer sentido (sem isso, “pausar aguardando aprovação” não sobrevive a um restart).</li>
+            <li>Traduzir README/SPEC para inglês além do português.</li>
+            <li>Extrair o 2FV como projeto/artigo próprio — a parte mais imediatamente útil e a menos dependente do resto.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section" id="s8">
+        <h2><span class="sec-n">§8</span> Comparação com frameworks atuais</h2>
+        <div class="table-scroll">
+          <table>
+            <caption>2flow × orquestradores e runtimes de workflow</caption>
+            <thead>
+              <tr>
+                <th scope="col">Dimensão</th>
+                <th scope="col" class="col-2flow">2flow</th>
+                <th scope="col">LangGraph</th>
+                <th scope="col">Temporal / Restate</th>
+                <th scope="col">Effect / ZIO</th>
+                <th scope="col">BPMN (Camunda/Zeebe)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Modelo</th><td class="col-2flow">DSL textual → AST comptime</td><td>Grafo em Python (StateGraph)</td><td>Workflow-as-code + replay</td><td>Efeitos tipados compostos</td><td>Modelo visual (XML)</td></tr>
+              <tr><th scope="row">Custo de runtime</th><td class="col-2flow pos">~zero (monomorfizado)</td><td class="neg">Alto (interpretador por passo)</td><td>Médio (SDK + servidor)</td><td>Baixo (fibers)</td><td>Médio-alto</td></tr>
+              <tr><th scope="row">Durabilidade / resume</th><td class="col-2flow neg">Nenhuma</td><td>Checkpointing</td><td class="pos">Núcleo do produto</td><td class="neg">Não</td><td class="pos">Sim</td></tr>
+              <tr><th scope="row">Erros tipados</th><td class="col-2flow neg">Não (<code>bool</code>)</td><td>Parcial (via state)</td><td>Sim (Saga helper)</td><td class="pos">Sim (canal <code>E</code>)</td><td>Compensação nativa</td></tr>
+              <tr><th scope="row">Human-in-the-loop</th><td class="col-2flow neg">Anunciado, não implementado</td><td class="pos"><code>interrupt()</code> real</td><td>Signals / Updates</td><td>Manual</td><td class="pos">User Task nativa</td></tr>
+              <tr><th scope="row">Concorrência</th><td class="col-2flow neg">thread/ramo, sem pool</td><td>async</td><td>Determinística + timers</td><td class="pos">Structured + interrupção</td><td>Parallel Gateway</td></tr>
+              <tr><th scope="row">Distribuído</th><td class="col-2flow neg">Não (in-process)</td><td class="neg">Não (1 processo)</td><td class="pos">Sim</td><td class="neg">Não</td><td class="pos">Sim</td></tr>
+              <tr><th scope="row">Observabilidade</th><td class="col-2flow neg"><code>print</code> + ANSI</td><td>LangSmith</td><td class="pos">Web UI + histórico</td><td>Tracing / Metrics</td><td>Cockpit / Operate</td></tr>
+              <tr><th scope="row">Peso operacional</th><td class="col-2flow pos">1 arquivo, sem deps</td><td>biblioteca</td><td class="neg">cluster</td><td>biblioteca</td><td class="neg">cluster</td></tr>
+              <tr><th scope="row">Alvo natural</th><td class="col-2flow">pipelines fixos, baixa latência</td><td>loops de agentes LLM</td><td>processos de negócio longos</td><td>apps TS resilientes</td><td>processos corporativos</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>LangGraph</h3>
+        <p>
+          Estruturalmente é o parente mais próximo: <code>NoFlowAST</code> + <code>Event</code>
+          compartilhado é o mesmo formato do <code>StateGraph</code> + state. Diferenças que
+          importam: o state do LangGraph é <strong>tipado com reducers explícitos</strong> para
+          updates concorrentes (2flow tem corrida); tem checkpointing real; o HITL via
+          <code>interrupt()</code> funciona. Em troca, LangGraph reinterpreta o grafo a cada
+          passo — 2flow compila isso pra fora. 2flow poderia ser o <em>control plane</em> nativo
+          embaixo de algo assim.
+        </p>
+
+        <h3>Temporal / Restate / DBOS</h3>
+        <p>
+          É a categoria que a retórica do README mira: execução durável, replay determinístico,
+          sagas que sobrevivem à morte do processo, workflows de meses. O <code>!-&gt;</code> é
+          um <code>try</code>/compensa síncrono num processo só. A distância é enorme — mas
+          Temporal precisa de um cluster e 2flow é uma lib de 500 linhas. Classes de peso
+          diferentes; o erro é o discurso sugerir que estão na mesma.
+        </p>
+
+        <h3>Effect (TS) / ZIO (Scala)</h3>
+        <p>
+          Filosoficamente é onde o 2flow <em>quer</em> chegar: efeitos componíveis, canal de
+          erro tipado (<code>Effect&lt;A, E, R&gt;</code>), fibers com interrupção, structured
+          concurrency. Effect faz <strong>no nível de tipos</strong> o que o 2flow gesticula.
+          Se “os tipos conversam” tem que virar verdade, <code>Effect&lt;A, E, R&gt;</code> é o
+          modelo a estudar.
+        </p>
+
+        <h3>BPMN (Camunda / Zeebe)</h3>
+        <p>
+          As primitivas são <em>exatamente</em> as mesmas: sequence flow, parallel gateway,
+          compensation/saga, user task (= HITL). 2flow é, na prática, BPMN textual compilado
+          para código nativo. Camunda/Zeebe são distribuídos, duráveis, com modelador visual e
+          cockpit; 2flow troca tudo isso por overhead zero e uma sintaxe de uma linha.
+        </p>
+
+        <h3>Frameworks de agente LLM (OpenAI Agents SDK, CrewAI, AutoGen)</h3>
+        <p>
+          Esses tratam do que é específico de LLM: tool calling, handoffs, memória, gestão de
+          contexto, orçamento de tokens. 2flow é só camada de orquestração — os “agentes” são
+          funções Zig. O README cita “A2A”, “agentes de IA”, “LLM”, mas
+          <strong>não há nenhuma integração com LLM</strong>. 2flow poderia ser o motor de
+          controle <em>sob</em> um sistema desses, não substituí-lo.
+        </p>
+      </section>
+
+      <section class="section" id="s9">
+        <h2><span class="sec-n">§9</span> Onde o 2flow realmente se encaixa</h2>
+        <div class="fit">
+          <div class="yes">
+            <h3>Sim</h3>
+            <ul>
+              <li>Orquestração intra-processo de baixa latência e alta vazão.</li>
+              <li>Topologia fixa em tempo de build.</li>
+              <li>Pipelines de tratamento de request dentro de um serviço.</li>
+              <li>Etapas de ETL embutidas, lógica de jogo, pipelines de trading.</li>
+              <li>Sistemas embarcados; o próprio pre-flight 2FV.</li>
+            </ul>
+          </div>
+          <div class="no">
+            <h3>Não</h3>
+            <ul>
+              <li>Processos de negócio longos.</li>
+              <li>Qualquer coisa que precise sobreviver a restart.</li>
+              <li>Qualquer coisa genuinamente distribuída.</li>
+              <li>Loops de agente LLM com planejamento dinâmico.</li>
+              <li>Para esses, os frameworks da §8 existem por bons motivos.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="s10">
+        <h2><span class="sec-n">§10</span> Veredito</h2>
+        <p>
+          Tirando o marketing e julgando só o código: é uma <strong>prova de conceito
+          bem-feita</strong> de “DSL → AST comptime → orquestrador monomorfizado”, com uma
+          segunda boa ideia acoplada (2FV). O núcleo funciona e passa nos testes. Falta:
+          consolidação num módulo com <code>build.zig</code>, uma história de concorrência de
+          verdade (pool, cancelamento, erros tipados, isolamento de estado) e — acima de tudo —
+          <strong>documentação que descreva o que existe</strong>. Implemente o
+          <code>[?…]</code> e a checagem de nós, ou pare de anunciá-los. A base é boa o
+          suficiente para merecer esse cuidado.
+        </p>
+
+        <div class="score" role="img" aria-label="Notas subjetivas de 0 a 10: ideia 8, execução do núcleo 6, robustez de produção 3, honestidade da documentação 3, potencial com P0/P1 feito 8">
+          <div class="score-row s-high">
+            <span class="score-label">Ideia</span>
+            <span class="score-track"><span class="score-fill" style="--v:8"></span></span>
+            <span class="score-num">8<span class="mx">/10</span></span>
+          </div>
+          <div class="score-row s-mid">
+            <span class="score-label">Execução do núcleo</span>
+            <span class="score-track"><span class="score-fill" style="--v:6"></span></span>
+            <span class="score-num">6<span class="mx">/10</span></span>
+          </div>
+          <div class="score-row s-low">
+            <span class="score-label">Robustez de produção</span>
+            <span class="score-track"><span class="score-fill" style="--v:3"></span></span>
+            <span class="score-num">3<span class="mx">/10</span></span>
+          </div>
+          <div class="score-row s-low">
+            <span class="score-label">Honestidade da documentação</span>
+            <span class="score-track"><span class="score-fill" style="--v:3"></span></span>
+            <span class="score-num">3<span class="mx">/10</span></span>
+          </div>
+          <div class="score-row s-high">
+            <span class="score-label">Potencial se o P0/P1 for feito</span>
+            <span class="score-track"><span class="score-fill" style="--v:8"></span></span>
+            <span class="score-num">8<span class="mx">/10</span></span>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        Parecer produzido por Claude (Sonnet 5) via Claude Code · 2026-09-03 ·
+        commit 7d2ac89 na branch claude/init-89cd8b ·
+        fonte: docs/CLAUDE-OPINION.md · reflete o estado do repositório na data acima.
+      </footer>
+
+    </main>
+  </div>
+</div>
