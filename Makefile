@@ -48,8 +48,13 @@ test:
 	@echo "🧪 [2flow] Executando testes da topologia central..."
 	$(ZIG) test tests/main.zig
 
+## test-erp: Valida o MOTOR REAL (main.zig) com um fluxo ERP complexo de ponta a ponta
+test-erp:
+	@echo "🧪 [2flow] Validando o motor real com o fluxo ERP complexo..."
+	$(ZIG) test --dep flow -Mroot=tests/erp_complexo.zig -Mflow=main.zig
+
 ## test-all: Executa TODOS os testes do ecossistema 2flow
-test-all: test-wasm test
+test-all: test-wasm test test-erp
 	@echo "🧪 [2flow] Executando testes do Data Pipeline..."
 	cd examples/data-pipeline && $(ZIG) test test_pipeline.zig
 	@echo "🧪 [2flow] Executando testes da Empresa Agêntica..."
@@ -92,6 +97,7 @@ help:
 	@echo "  make wasm-debug        Compila 2flow.wasm com símbolos de debug"
 	@echo "  make test-wasm         Roda os testes do validador 2FV WASM"
 	@echo "  make test              Roda os testes da DSL central 2flow"
+	@echo "  make test-erp          Valida o motor real com um fluxo ERP complexo"
 	@echo "  make test-all          Roda todos os testes do repositório"
 	@echo "  make run-datapipeline  Executa o exemplo Modern Data Pipeline"
 	@echo "  make run-empresa       Executa o exemplo Micro-Empresa Agêntica"
